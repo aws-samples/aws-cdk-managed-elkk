@@ -10,7 +10,9 @@ from aws_cdk import (
     aws_cloudformation as cfn,
 )
 from s3_cleaner import S3Cleaner
-from constants import ELK_PROJECT_TAG, ELK_KEY_PAIR
+from constants import ELK_PROJECT_TAG, ELK_KEY_PAIR, ELK_LOGSTASH_S3
+import boto3
+from botocore.exceptions import ClientError
 
 dirname = os.path.dirname(__file__)
 
@@ -87,16 +89,18 @@ class LogstashStack(core.Stack):
         # add the role permissions
         logstash_instance.add_to_role_policy(statement=access_logstash_policy)
 
-        # create the s3 bucket
-        logstash_s3 = s3.Bucket(self, "logstash_s3")
+        # check if logstash_s3 buicket exists
+        s3client = boto3.client("s3")
+        try:
+            s3client.head_bucket(Bucket=ELK_LOGSTASH_S3)
+            # use existing bucket if it exists
+            logstash_s3 = s3.Bucket.from_bucket_attributes(
+                self, "logstash_s3", bucket_name=ELK_LOGSTASH_S3
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                # create the s3 bucket
+                logstash_s3 = s3.Bucket(self, "logstash_s3")
+            else:
+                print("Unexpected error: %s" % e)
         core.Tag.add(logstash_s3, "project", ELK_PROJECT_TAG)
-
-        # custom resource to invote lambda
-        s3_cleaner = S3Cleaner(
-            self, "s3_cleaner",
-            message="CustomResource says hello",
-            bucket=logstash_s3.bucket_arn
-        )
-        core.Tag.add(s3_cleaner, "project", ELK_PROJECT_TAG)
-        s3_cleaner.node.add_dependency(logstash_s3)
-
