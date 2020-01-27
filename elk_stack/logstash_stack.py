@@ -1,6 +1,15 @@
 # import modules
 import os
-from aws_cdk import core, aws_ec2 as ec2, aws_s3_assets as assets, aws_iam as iam
+from aws_cdk import (
+    core,
+    aws_ec2 as ec2,
+    aws_s3_assets as assets,
+    aws_iam as iam,
+    aws_s3 as s3,
+    aws_lambda as lambda_,
+    aws_cloudformation as cfn,
+)
+from s3_cleaner import S3Cleaner
 from constants import ELK_PROJECT_TAG, ELK_KEY_PAIR
 
 dirname = os.path.dirname(__file__)
@@ -24,7 +33,7 @@ class LogstashStack(core.Stack):
             self, "logstash.conf", path=os.path.join(dirname, "logstash.conf")
         )
 
-        # get security group from kafka 
+        # get security group from kafka
         logstash_security_group = ec2.SecurityGroup.from_security_group_id(
             self,
             "logstash_security_group",
@@ -77,3 +86,17 @@ class LogstashStack(core.Stack):
         )
         # add the role permissions
         logstash_instance.add_to_role_policy(statement=access_logstash_policy)
+
+        # create the s3 bucket
+        logstash_s3 = s3.Bucket(self, "logstash_s3")
+        core.Tag.add(logstash_s3, "project", ELK_PROJECT_TAG)
+
+        # custom resource to invote lambda
+        s3_cleaner = S3Cleaner(
+            self, "s3_cleaner",
+            message="CustomResource says hello",
+            bucket=logstash_s3.bucket_arn
+        )
+        core.Tag.add(s3_cleaner, "project", ELK_PROJECT_TAG)
+        s3_cleaner.node.add_dependency(logstash_s3)
+
