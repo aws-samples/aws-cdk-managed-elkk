@@ -1,0 +1,10 @@
+-e .
+pytest
+awscli
+aws_cdk.core
+aws_cdk.aws_ec2
+aws_cdk.aws_iam
+aws_cdk.aws_msk
+aws_cdk.aws_elasticsearch
+aws_cdk.aws_s3_assets
+aws_cdk.aws_lambda

@@ -1,0 +1,20 @@
+[
+    {
+        "Name": "tag:project",
+        "Values": [
+            "elk-stack"
+        ]
+    },
+    {
+        "Name": "instance-state-name",
+        "Values": [
+            "running"
+        ]
+    },
+    {
+        "Name": "tag:aws:cloudformation:stack-name",
+        "Values": [
+            "elk-logstash"
+        ]
+    }
+]
