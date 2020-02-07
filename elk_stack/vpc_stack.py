@@ -14,12 +14,13 @@ class VpcStack(core.Stack):
         super().__init__(scope, id, **kwargs)
 
         # create the vpc
-        self.elk_vpc = ec2.Vpc(self, "elk_vpc", max_azs=3)
+        self.elk_vpc = ec2.Vpc(self, "elk_vpc", max_azs=3,)
         core.Tag.add(self.elk_vpc, "project", ELK_PROJECT_TAG)
-    
-    def get_vpc(self) -> ec2.Vpc:
-        return self.elk_vpc
+        # add s3 endpoint
+        self.elk_vpc.add_gateway_endpoint("1234", service=ec2.GatewayVpcEndpointAwsService.S3,)
 
-    def get_subnet_ids_public(self) -> list:
-        return self.elk_vpc.select_subnets(subnet_type=ec2.SubnetType.PUBLIC).subnet_ids
+    # properties
+    @property
+    def get_vpc(self):
+        return self.elk_vpc
 

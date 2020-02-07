@@ -43,7 +43,7 @@ Note that the key_pair name "ElkKeyPair" is held in elk_stack/constants.py
 
 ```bash
 # create the key pair
-aws ec2 create-key-pair --key-name ElkKeyPair --query 'KeyMaterial' --output text > ElkKeyPair.pem
+aws ec2 create-key-pair --key-name ElkKeyPair --query 'KeyMaterial' --output text > ElkKeyPair.pem --region us-east-1
 # update key_pair permissions
 chmod 400 ElkKeyPair.pem
 # move key_pair to .ssh
@@ -76,6 +76,14 @@ ELK_KAFKA_INSTANCE_TYPE = "kafka.m5.large"
 Note that this code is designed to work from us-east-1.
 
 Run all terminal comments from the project root directory.
+
+### Boostrap the CDK
+
+Create the CDK configuration bucket.
+
+```bash
+cdk bootstrap aws://${account id}/${region}
+```
 
 ### Create Amazon Virtual Private Cloud
 
@@ -249,6 +257,7 @@ Select "Save"
 
 Create the SSH Tunnel
 
+Better: https://www.jeremydaly.com/access-aws-vpc-based-elasticsearch-cluster-locally/
 
 ```bash
 # get the elastic instance public dns

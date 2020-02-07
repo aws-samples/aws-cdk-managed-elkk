@@ -35,14 +35,14 @@ class ElasticStack(core.Stack):
         logstash_security_group = ec2.SecurityGroup.from_security_group_id(
             self,
             "logstash_security_group",
-            security_group_id=mymsk.kafka_client_security_group.security_group_id
+            security_group_id=mymsk.kafka_client_security_group.security_group_id,
         )
 
         # security group for elastic
         elastic_security_group = ec2.SecurityGroup(
             self,
             "elastic_security_group",
-            vpc=myvpc.get_vpc(),
+            vpc=myvpc,
             description="elastic security group",
             allow_all_outbound=True,
         )
@@ -65,7 +65,9 @@ class ElasticStack(core.Stack):
             ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(8157), "for kibana proxy",
         )
         # elastic policy
-        elastic_policy = iam.PolicyStatement(effect=iam.Effect.ALLOW, actions=["es:*",], resources=["*"],)
+        elastic_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW, actions=["es:*",], resources=["*"],
+        )
         elastic_policy.add_any_principal()
         elastic_document = iam.PolicyDocument()
         elastic_document.add_statements(elastic_policy)
@@ -86,7 +88,9 @@ class ElasticStack(core.Stack):
             ebs_options={"ebsEnabled": True, "volumeSize": 10},
             vpc_options={
                 "securityGroupIds": [elastic_security_group.security_group_id],
-                "subnetIds": myvpc.get_subnet_ids_public(),
+                "subnetIds": myvpc.select_subnets(
+                    subnet_type=ec2.SubnetType.PUBLIC
+                ).subnet_ids,
             },
             access_policies=elastic_document,
         )
@@ -113,7 +117,7 @@ class ElasticStack(core.Stack):
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
-                vpc=myvpc.get_vpc(),
+                vpc=myvpc,
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
                 user_data=elastic_userdata,
                 key_name=ELK_KEY_PAIR,

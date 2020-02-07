@@ -18,14 +18,13 @@ from constants import (
     ELK_KEY_PAIR,
 )
 
-kafka = boto3.client("kafka", region_name=ELK_REGION)
 dirname = os.path.dirname(__file__)
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 
 class KafkaStack(core.Stack):
     def __init__(
-        self, scope: core.Construct, id: str, myvpc, client: bool = True, **kwargs
+        self, scope: core.Construct, id: str, my_vpc, client: bool = True, **kwargs
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
@@ -41,7 +40,7 @@ class KafkaStack(core.Stack):
         self.kafka_client_security_group = ec2.SecurityGroup(
             self,
             "kafka_client_security_group",
-            vpc=myvpc.get_vpc(),
+            vpc=my_vpc,
             description="kafka client security group",
             allow_all_outbound=True,
         )
@@ -56,7 +55,7 @@ class KafkaStack(core.Stack):
         kafka_security_group = ec2.SecurityGroup(
             self,
             "kafka_security_group",
-            vpc=myvpc.get_vpc(),
+            vpc=my_vpc,
             description="kafka security group",
             allow_all_outbound=True,
         )
@@ -81,7 +80,9 @@ class KafkaStack(core.Stack):
             self,
             "kafka_cluster",
             broker_node_group_info={
-                "clientSubnets": myvpc.get_subnet_ids_public(),
+                "clientSubnets": my_vpc.select_subnets(
+                    subnet_type=ec2.SubnetType.PUBLIC
+                ).subnet_ids,
                 "instanceType": ELK_KAFKA_INSTANCE_TYPE,
                 "numberOfBrokerNodes": ELK_KAFKA_BROKER_NODES,
                 "securityGroups": [kafka_security_group.security_group_id],
@@ -118,7 +119,7 @@ class KafkaStack(core.Stack):
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
-                vpc=myvpc.get_vpc(),
+                vpc=my_vpc,
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
                 user_data=kafka_client_userdata,
                 key_name=ELK_KEY_PAIR,
@@ -141,3 +142,8 @@ class KafkaStack(core.Stack):
             kafka_client_instance.add_to_role_policy(statement=access_kafka_policy)
             # add access to the file asset
             kafka_sh.grant_read(kafka_client_instance)
+
+    # properties
+    @property
+    def get_kafka_client_security_group(self):
+        return self.kafka_client_security_group

@@ -9,7 +9,6 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_cloudformation as cfn,
 )
-from s3_cleaner import S3Cleaner
 from constants import ELK_PROJECT_TAG, ELK_KEY_PAIR, ELK_LOGSTASH_S3
 import boto3
 from botocore.exceptions import ClientError
@@ -18,7 +17,7 @@ dirname = os.path.dirname(__file__)
 
 
 class LogstashStack(core.Stack):
-    def __init__(self, scope: core.Construct, id: str, myvpc, mymsk, **kwargs) -> None:
+    def __init__(self, scope: core.Construct, id: str, myvpc, mymsk, mys3bucket, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         # assets for logstash
@@ -65,7 +64,7 @@ class LogstashStack(core.Stack):
             machine_image=ec2.AmazonLinuxImage(
                 generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
             ),
-            vpc=myvpc.get_vpc(),
+            vpc=myvpc,
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
             user_data=logstash_userdata,
             key_name=ELK_KEY_PAIR,
@@ -88,19 +87,8 @@ class LogstashStack(core.Stack):
         )
         # add the role permissions
         logstash_instance.add_to_role_policy(statement=access_logstash_policy)
-
-        # check if logstash_s3 buicket exists
-        s3client = boto3.client("s3")
-        try:
-            s3client.head_bucket(Bucket=ELK_LOGSTASH_S3)
-            # use existing bucket if it exists
-            logstash_s3 = s3.Bucket.from_bucket_attributes(
-                self, "logstash_s3", bucket_name=ELK_LOGSTASH_S3
-            )
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "404":
-                # create the s3 bucket
-                logstash_s3 = s3.Bucket(self, "logstash_s3")
-            else:
-                print("Unexpected error: %s" % e)
-        core.Tag.add(logstash_s3, "project", ELK_PROJECT_TAG)
+        # policy for s3
+        access_s3_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW, actions=["s3:ListBuckets",], resources=["*"],
+        )
+        logstash_instance.add_to_role_policy(statement=access_s3_policy)

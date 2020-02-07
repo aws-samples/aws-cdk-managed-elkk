@@ -15,15 +15,10 @@ external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 
 class FilebeatStack(core.Stack):
-    def __init__(self, scope: core.Construct, id: str, myvpc, mymsk, **kwargs) -> None:
+    def __init__(
+        self, scope: core.Construct, id: str, my_vpc, my_sg, **kwargs
+    ) -> None:
         super().__init__(scope, id, **kwargs)
-
-        # get client security group from kafka stack
-        fb_security_group = ec2.SecurityGroup.from_security_group_id(
-            self,
-            "fb_security_group",
-            security_group_id=mymsk.kafka_client_security_group.security_group_id,
-        )
 
         # assets for filebeat
         filebeat_sh = assets.Asset(
@@ -58,11 +53,11 @@ class FilebeatStack(core.Stack):
             machine_image=ec2.AmazonLinuxImage(
                 generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
             ),
-            vpc=myvpc.get_vpc(),
+            vpc=my_vpc,
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
             user_data=fb_userdata,
             key_name=ELK_KEY_PAIR,
-            security_group=fb_security_group,
+            security_group=my_sg,
         )
         core.Tag.add(fb_instance, "project", ELK_PROJECT_TAG)
         # create policies for ec2 to connect to kafka
