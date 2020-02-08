@@ -30,7 +30,7 @@ cd elk-stack
 brew install pyenv
 # check the python versions
 pyenv versions
-# need to have 3.7.x for the aws cdk
+# need to have 3.7.5 for the aws cdk
 # if not present then install with
 pyenv install 3.7.5
 # set the local version to 3.7.5
@@ -54,7 +54,7 @@ ssh-add ~/.ssh/ElkKeyPair.pem
 
 ### Set the configuration
 
-Create a file in the project root as "constants.py"  
+Create a file in the project root as "elk_stack/constants.py"  
 
 Create the file content as below file with the correct region and account (note these need to be hard coded and can't use psudoparameters)  
 
@@ -102,7 +102,7 @@ Use the AWS CDK to deploy an Amazon MSK Cluster into the VPC.
 cdk deploy elk-kafka
 ```
 
-An Amazon EC2 instance is deployed to interact with the Amazon MSK Cluster.  
+When Client is set to True an Amazon EC2 instance is deployed to interact with the Amazon MSK Cluster. It can take up to 30 minutes for the Amazon MSK cluster to be deployed.
 
 Wait until 2/2 checks are completed on the Kafka client instance to ensure that the userdata scripts have fully run.  
 

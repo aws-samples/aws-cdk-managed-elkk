@@ -11,7 +11,7 @@ amazon-linux-extras install java-openjdk11 -y
 # install git
 yum install git -y
 
-# get log generator
+# get elastic output to es
 git clone https://github.com/awslabs/logstash-output-amazon_es.git /home/ec2-user/logstash-output-amazon_es
 
 # logstash
@@ -24,7 +24,7 @@ yum install logstash -y
 # add user to logstash group
 usermod -a -G logstash ec2-user
 
-# get domain details
+# get domain details and update logstash.conf
 elastic_domain=`aws es list-domain-names --region us-east-1 | jq '.DomainNames[0].DomainName' -r` && echo $elastic_domain
 elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 | jq -r '.DomainStatus.Endpoints.vpc' | sed 's/^/\ "/' | sed 's/$/"\ /'` && echo $elastic_endpoint
 sed -i "s/elastic_endpoint/$elastic_endpoint/" /home/ec2-user/logstash.conf

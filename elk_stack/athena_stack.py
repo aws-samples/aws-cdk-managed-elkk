@@ -6,7 +6,7 @@ from aws_cdk import (
     aws_iam as iam,
 )
 from elk_stack.custom_resource import CustomResource
-from constants import ELK_PROJECT_TAG
+from elk_stack.constants import ELK_PROJECT_TAG
 import os
 
 # set path
@@ -14,7 +14,7 @@ dirname = os.path.dirname(__file__)
 
 
 class AthenaStack(core.Stack):
-    def __init__(self, scope: core.Construct, id: str, my_vpc, **kwargs) -> None:
+    def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         # assets for athena
@@ -46,11 +46,14 @@ class AthenaStack(core.Stack):
         s3_cleaner = CustomResource(
             self,
             "s3_cleaner",
+            HandlerPath=os.path.join(dirname, "s3_cleaner_handler.py"),
             BucketName=self.s3_bucket.bucket_name,
             ResourcePolicies=s3_cleaner_policies,
         )
         # needs a dependancy
         s3_cleaner.node.add_dependency(self.s3_bucket)
+        # response from the custom resource
+        # print("s3_clenaner.response", s3_cleaner.response)
 
     # properties
     @property

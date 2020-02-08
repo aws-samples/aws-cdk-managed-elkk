@@ -1,5 +1,6 @@
 # import modules
 import os
+import io
 import boto3
 import urllib.request
 from aws_cdk import (
@@ -9,14 +10,18 @@ from aws_cdk import (
     aws_iam as iam,
     aws_s3_assets as assets,
 )
-from constants import (
+from elk_stack.constants import (
     ELK_PROJECT_TAG,
     ELK_KAFKA_BROKER_NODES,
     ELK_KAFKA_VERSION,
     ELK_KAFKA_INSTANCE_TYPE,
     ELK_REGION,
     ELK_KEY_PAIR,
+    ELK_TOPIC,
+    ELK_KAFKA_CLIENT_INSTANCE,
+    ELK_KAFKA_DOWNLOAD_VERSION,
 )
+from elk_stack.helpers import file_updated
 
 dirname = os.path.dirname(__file__)
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
@@ -28,10 +33,32 @@ class KafkaStack(core.Stack):
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # assets for kafka
-        kafka_sh = assets.Asset(
-            self, "kafka_sh", path=os.path.join(dirname, "kafka.sh")
+        # get the zookeeper from the kakfa cluster
+        kafkaclient = boto3.client("kafka")
+        kafka_clusters = kafkaclient.list_clusters()
+        try:
+            kafka_arn = [
+                kc["ClusterArn"]
+                for kc in kafka_clusters["ClusterInfoList"]
+                if "elk-" in kc["ClusterName"]
+            ][0]
+
+            kafka_zookeeper = kafkaclient.describe_cluster(ClusterArn=kafka_arn)[
+                "ClusterInfo"
+            ]["ZookeeperConnectString"]
+        except IndexError:
+            kafka_zookeeper = ""
+        # update kafka.sh to .asset
+        kafka_sh_asset = file_updated(
+            os.path.join(dirname, "kafka.sh"),
+            {
+                "$kafka_zookeeper": kafka_zookeeper,
+                "$elk_topic": ELK_TOPIC,
+                "$kafka_download_version": ELK_KAFKA_DOWNLOAD_VERSION,
+                "$kafka_version": ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1]
+            },
         )
+        kafka_sh = assets.Asset(self, "kafka_sh", path=kafka_sh_asset)
         client_properties = assets.Asset(
             self, "client_properties", path=os.path.join(dirname, "client.properties")
         )
@@ -115,7 +142,7 @@ class KafkaStack(core.Stack):
             kafka_client_instance = ec2.Instance(
                 self,
                 "kafka_client",
-                instance_type=ec2.InstanceType("t2.xlarge"),
+                instance_type=ec2.InstanceType(ELK_KAFKA_CLIENT_INSTANCE),
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
@@ -134,7 +161,7 @@ class KafkaStack(core.Stack):
                 actions=[
                     "kafka:ListClusters",
                     "kafka:GetBootstrapBrokers",
-                    "kafka:DescribeCluster",
+                    # "kafka:DescribeCluster",
                 ],
                 resources=["*"],
             )

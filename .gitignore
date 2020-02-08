@@ -144,3 +144,4 @@ cdk.out/
 
 # for elkk
 constants.py
+*.asset

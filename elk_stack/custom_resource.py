@@ -8,8 +8,7 @@ class CustomResource(core.Construct):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id)
 
-        handler_path = os.path.join(dirname, "s3_cleaner_handler.py")
-        with open(handler_path, encoding="utf-8") as fp:
+        with open(kwargs["HandlerPath"], encoding="utf-8") as fp:
             code_body = fp.read()
 
         resource = cfn.CustomResource(
@@ -29,3 +28,5 @@ class CustomResource(core.Construct):
             ),
             properties=kwargs,
         )
+        # response
+        self.response = resource.get_att("Response")

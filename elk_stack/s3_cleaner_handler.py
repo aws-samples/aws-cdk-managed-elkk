@@ -25,7 +25,7 @@ def main(event, context):
 
         # do some reporting
         attributes = {
-            "BucketName": f'{event["ResourceProperties"]["BucketName"]}',
+            "Response": f'{event["ResourceProperties"]["BucketName"]}'
         }
 
         cfnresponse.send(event, context, cfnresponse.SUCCESS, attributes, physical_id)

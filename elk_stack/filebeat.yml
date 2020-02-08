@@ -173,10 +173,10 @@ setup.kibana:
 #----------------------------- Kafka output -----------------------------------
 output.kafka:
   # initial brokers for reading cluster metadata
-  hosts: [ kafka_brokers ]
+  hosts: [ $kafka_brokers ]
  
   # message topic selection + partitioning
-  topic: "elkstacktopic"
+  topic: "$elk_topic"
   # partition.round_robin:
   #   reachable_only: false
 

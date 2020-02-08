@@ -2,7 +2,7 @@
 
 # import modules
 from aws_cdk import core
-from constants import ELK_ACCOUNT, ELK_REGION
+from elk_stack.constants import ELK_ACCOUNT, ELK_REGION
 
 # import cdk classes
 from elk_stack.vpc_stack import VpcStack
@@ -39,6 +39,7 @@ elastic_stack = ElasticStack(
     env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
 )
 elastic_stack.add_dependency(vpc_stack)
+
 # filebeat stack (filebeat on ec2)
 filebeat_stack = FilebeatStack(
     app,
@@ -49,20 +50,20 @@ filebeat_stack = FilebeatStack(
 )
 filebeat_stack.add_dependency(kafka_stack)
 
-# athena and s3 stack
+# athena 
 athena_stack = AthenaStack(
     app,
     "elk-athena",
-    vpc_stack.get_vpc,
     env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
 )
+athena_stack.add_dependency(vpc_stack)
+
 # logstash stack
 logstash_stack = LogstashStack(
     app,
     "elk-logstash",
     vpc_stack.get_vpc,
     kafka_stack,
-    athena_stack.get_s3_bucket,
     env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
 )
 logstash_stack.add_dependency(kafka_stack)

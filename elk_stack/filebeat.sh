@@ -26,10 +26,6 @@ rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch
 mv -f /home/ec2-user/elastic.repo /etc/yum.repos.d/elastic.repo
 # install filebeat
 yum install filebeat -y
-# update filebeat with correct brokerstring
-kafka_arn=`aws kafka list-clusters --region us-east-1 --output json --query 'ClusterInfoList[*].ClusterArn' | jq '.[0]' -r` && echo $kafka_arn
-kafka_brokers=`aws kafka get-bootstrap-brokers --region us-east-1 --cluster-arn $kafka_arn --output json | jq -r '.BootstrapBrokerString' | sed 's/,/", "/g' | sed 's/^/\ "/' | sed 's/$/"\ /'` && echo $kafka_brokers
-sed -i "s/kafka_brokers/$kafka_brokers/" /home/ec2-user/filebeat.yml
 # move filebeat.yml to final location
 mv -f /home/ec2-user/filebeat.yml /etc/filebeat/filebeat.yml
 # start filebeat

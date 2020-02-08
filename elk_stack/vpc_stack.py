@@ -4,7 +4,7 @@ from aws_cdk import (
     core,
     aws_ec2 as ec2,
 )
-from constants import ELK_PROJECT_TAG
+from elk_stack.constants import ELK_PROJECT_TAG
 
 dirname = os.path.dirname(__file__)
 
@@ -17,7 +17,10 @@ class VpcStack(core.Stack):
         self.elk_vpc = ec2.Vpc(self, "elk_vpc", max_azs=3,)
         core.Tag.add(self.elk_vpc, "project", ELK_PROJECT_TAG)
         # add s3 endpoint
-        self.elk_vpc.add_gateway_endpoint("1234", service=ec2.GatewayVpcEndpointAwsService.S3,)
+        self.elk_vpc.add_gateway_endpoint(
+            "e6ad3311-f566-426e-8291-6937101db6a1",
+            service=ec2.GatewayVpcEndpointAwsService.S3,
+        )
 
     # properties
     @property

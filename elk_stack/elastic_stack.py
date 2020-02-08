@@ -7,7 +7,16 @@ from aws_cdk import (
     aws_s3_assets as assets,
 )
 import os
-from constants import ELK_PROJECT_TAG, ELK_KEY_PAIR
+from elk_stack.constants import (
+    ELK_PROJECT_TAG,
+    ELK_KEY_PAIR,
+    ELK_ELASTIC_CLIENT_INSTANCE,
+    ELK_ELASTIC_MASTER_COUNT,
+    ELK_ELASTIC_MASTER_INSTANCE,
+    ELK_ELASTIC_INSTANCE_COUNT,
+    ELK_ELASTIC_INSTANCE,
+    ELK_ELASTIC_VERSION
+)
 import urllib.request
 
 dirname = os.path.dirname(__file__)
@@ -76,20 +85,20 @@ class ElasticStack(core.Stack):
             self,
             "elastic_domain",
             elasticsearch_cluster_config={
-                "dedicatedMasterCount": 3,
+                "dedicatedMasterCount": ELK_ELASTIC_MASTER_COUNT,
                 "dedicatedMasterEnabled": True,
-                "dedicatedMasterType": "r5.large.elasticsearch",
-                "instanceCount": 3,
-                "instanceType": "r5.large.elasticsearch",
+                "dedicatedMasterType": ELK_ELASTIC_MASTER_INSTANCE,
+                "instanceCount": ELK_ELASTIC_INSTANCE_COUNT,
+                "instanceType": ELK_ELASTIC_INSTANCE,
                 "zoneAwarenessConfig": {"availabilityZoneCount": 3},
                 "zoneAwarenessEnabled": True,
             },
-            elasticsearch_version="7.1",
+            elasticsearch_version=ELK_ELASTIC_VERSION,
             ebs_options={"ebsEnabled": True, "volumeSize": 10},
             vpc_options={
                 "securityGroupIds": [elastic_security_group.security_group_id],
                 "subnetIds": myvpc.select_subnets(
-                    subnet_type=ec2.SubnetType.PUBLIC
+                    subnet_type=ec2.SubnetType.PRIVATE
                 ).subnet_ids,
             },
             access_policies=elastic_document,
@@ -113,7 +122,7 @@ class ElasticStack(core.Stack):
             elastic_instance = ec2.Instance(
                 self,
                 "elastic_client",
-                instance_type=ec2.InstanceType("t2.xlarge"),
+                instance_type=ec2.InstanceType(ELK_ELASTIC_CLIENT_INSTANCE),
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
