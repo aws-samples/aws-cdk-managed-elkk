@@ -63,14 +63,32 @@ Create the file content as below file with the correct region and account (note 
 
 # project level constants
 ELK_PROJECT_TAG = "elk-stack"
-ELK_KEY_PAIR = "ElkKeyPair"
-ELK_REGION = "${Your Region}"
-ELK_ACCOUNT = "${Your Account}"
+ELK_KEY_PAIR = "${your-keypair}"
+ELK_REGION = "${your-region}"
+ELK_ACCOUNT = "${your-account}"
 
 # kafka settings
+ELK_KAFKA_DOWNLOAD_VERSION = "kafka_2.12-2.4.0"
 ELK_KAFKA_BROKER_NODES = 3
 ELK_KAFKA_VERSION = "2.3.1"
 ELK_KAFKA_INSTANCE_TYPE = "kafka.m5.large"
+ELK_TOPIC = "elkstacktopic"
+ELK_KAFKA_CLIENT_INSTANCE = "t2.xlarge"
+
+# filebeat
+ELK_FILEBEAT_INSTANCE = "t2.xlarge"
+
+# elastic
+ELK_ELASTIC_CLIENT_INSTANCE = "t2.xlarge"
+ELK_ELASTIC_MASTER_COUNT = 3
+ELK_ELASTIC_MASTER_INSTANCE = "r5.large.elasticsearch"
+ELK_ELASTIC_INSTANCE_COUNT = 3
+ELK_ELASTIC_INSTANCE = "r5.large.elasticsearch"
+ELK_ELASTIC_VERSION = "7.1"
+
+# logstash
+ELK_LOGSTASH_S3 = "elk-logstash-logstashs31a9ff3f2-41k5qz4mbewf"
+ELK_LOGSTASH_INSTANCE = "t2.xlarge"
 ```
 
 Note that this code is designed to work from us-east-1.
@@ -191,7 +209,9 @@ cdk deploy elk-elastic
 
 An Amazon EC2 instance is deployed to interact with the Elasticsearch Domain.   
 
-Wait until 2/2 checks are completed on the Elastic instance to ensure that the userdata scripts have fully run.  
+New Elasticsearch take about ten minutes to initialize.  
+
+Wait until 2/2 checks are completed on the Elastic ec2 instance to ensure that the userdata scripts have fully run.  
 
 Connect to the Elastic Instance using a terminal window:  
 
@@ -210,11 +230,11 @@ elastic_domain=`aws es list-domain-names --region us-east-1 | jq '.DomainNames[0
 # get the elastic endpoint
 elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 | jq -r '.DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # curl a doc into elasticsearch
-curl -XPUT $elastic_endpoint/elkstack-test/_doc/1 -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
+curl -XPOST $elastic_endpoint/elkstack-test/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
 # curl to query elasticsearch
-curl -XPOST $elastic_endpoint/elkstack/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
+curl -XPOST $elastic_endpoint/elkstack-test/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
 # count the records in the index
-curl -GET $elastic_endpoint/elkstack/_count
+curl -GET $elastic_endpoint/elkstack-test/_count
 # exit the Elastic instance
 exit
 ```
@@ -269,6 +289,12 @@ ssh ec2-user@$elastic_dns -ND 8157
 Leave the tunnel terminal window open.
 
 Open ${elastic_endpoint}/_plugin/kibana/ to navigate to Kibana via the elastic proxy instance.
+
+## Create S3 and Athena
+
+```bash
+cdk deploy elk-athena
+```
 
 ### Create the Logstash Instance
 
