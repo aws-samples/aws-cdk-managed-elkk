@@ -1,5 +1,6 @@
 # import modules
 import os
+import urllib.request
 from aws_cdk import (
     core,
     aws_ec2 as ec2,
@@ -13,17 +14,18 @@ from elk_stack.constants import (
     ELK_LOGSTASH_S3,
     ELK_REGION,
     ELK_TOPIC,
-    ELK_LOGSTASH_INSTANCE
+    ELK_LOGSTASH_INSTANCE,
 )
 from elk_stack.helpers import file_updated
 import boto3
 from botocore.exceptions import ClientError
 
 dirname = os.path.dirname(__file__)
+external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 
 class LogstashStack(core.Stack):
-    def __init__(self, scope: core.Construct, id: str, myvpc, mymsk, **kwargs) -> None:
+    def __init__(self, scope: core.Construct, id: str, vpc_stack, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
         # get s3 bucket name
@@ -50,6 +52,7 @@ class LogstashStack(core.Stack):
             es_endpoint = es_endpoint["DomainStatus"]["Endpoints"]["vpc"]
         except IndexError:
             es_endpoint = ""
+
         # get kakfa brokers
         kafkaclient = boto3.client("kafka")
         kafka_clusters = kafkaclient.list_clusters()
@@ -63,6 +66,7 @@ class LogstashStack(core.Stack):
             kafka_brokers = kafka_brokers["BootstrapBrokerString"]
         except IndexError:
             kafka_brokers = ""
+
         # assets for logstash
         logstash_sh = assets.Asset(
             self, "logstash_sh", path=os.path.join(dirname, "logstash.sh")
@@ -86,13 +90,6 @@ class LogstashStack(core.Stack):
         )
         logstash_conf = assets.Asset(self, "logstash.conf", path=logstash_conf_asset,)
 
-        # get security group from kafka
-        logstash_security_group = ec2.SecurityGroup.from_security_group_id(
-            self,
-            "logstash_security_group",
-            security_group_id=mymsk.kafka_client_security_group.security_group_id,
-        )
-
         # userdata for logstash
         logstash_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
         logstash_userdata.add_commands(
@@ -108,6 +105,43 @@ class LogstashStack(core.Stack):
             ". /home/ec2-user/logstash.sh",
         )
 
+        # logstash security group
+        logstash_security_group = ec2.SecurityGroup(
+            self,
+            "logstash_security_group",
+            vpc=vpc_stack.get_vpc,
+            description="logstash security group",
+            allow_all_outbound=True,
+        )
+        core.Tag.add(logstash_security_group, "project", ELK_PROJECT_TAG)
+        core.Tag.add(logstash_security_group, "Name", "logstash_sg")
+        # Open port 22 for SSH
+        logstash_security_group.add_ingress_rule(
+            ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(22), "from own public ip",
+        )
+
+        # get security groups from elastic and kafka
+        ec2client = boto3.client("ec2")
+        security_groups = ec2client.describe_security_groups(
+            Filters=[{"Name": "tag-value", "Values": [ELK_PROJECT_TAG,]},],
+        )
+        kafka_sg_id = [
+            sg["GroupId"]
+            for sg in security_groups["SecurityGroups"]
+            if "kafka security group" in sg["Description"]
+        ]
+        print("kafka_sg_id", kafka_sg_id)
+        elastic_sg_id = [
+            sg["GroupId"]
+            for sg in security_groups["SecurityGroups"]
+            if "elastic security group" in sg["Description"]
+        ]
+        print("elastic_sg_id", elastic_sg_id)
+        # kafka from logstash
+        # kafka_stack.get_kafka_security_group.add_ingress_rule(
+        #     logstash_security_group, ec2.Port.all_traffic(), "from logstash sg",
+        # )
+
         # create the logstash instance
         logstash_instance = ec2.Instance(
             self,
@@ -116,7 +150,7 @@ class LogstashStack(core.Stack):
             machine_image=ec2.AmazonLinuxImage(
                 generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
             ),
-            vpc=myvpc,
+            vpc=vpc_stack.get_vpc,
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
             user_data=logstash_userdata,
             key_name=ELK_KEY_PAIR,
@@ -126,20 +160,26 @@ class LogstashStack(core.Stack):
         # add access to the file asset
         logstash_sh.grant_read(logstash_instance)
         # create policies for logstash
-        access_logstash_policy = iam.PolicyStatement(
+        access_elastic_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=[
                 "es:ListDomainNames",
                 "es:DescribeElasticsearchDomain",
                 "es:ESHttpPut",
-                "kafka:ListClusters",
-                "kafka:GetBootstrapBrokers",
             ],
             resources=["*"],
         )
         # add the role permissions
-        logstash_instance.add_to_role_policy(statement=access_logstash_policy)
+        logstash_instance.add_to_role_policy(statement=access_elastic_policy)
+        # kafka policy
+        access_kafka_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["kafka:ListClusters", "kafka:GetBootstrapBrokers",],
+            resources=["*"],
+        )
+        logstash_instance.add_to_role_policy(statement=access_kafka_policy)
+        # s3 policy
         access_s3_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW, actions=["s3:ListBuckets",], resources=["*"],
+            effect=iam.Effect.ALLOW, actions=["s3:*",], resources=["*"],
         )
         logstash_instance.add_to_role_policy(statement=access_s3_policy)

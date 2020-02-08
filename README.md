@@ -327,13 +327,13 @@ elastic_domain=`aws es list-domain-names --region us-east-1 | jq '.DomainNames[0
 # get the elastic endpoint
 elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 | jq -r '.DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # curl a doc into elasticsearch
-curl -XPUT $elastic_endpoint/elkstack-test/_doc/2 -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
+curl -XPOST $elastic_endpoint/elkstack-test/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
 # curl to query elasticsearch
-curl -XPOST $elastic_endpoint/elkstack/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
+curl -XPOST $elastic_endpoint/elkstack-test/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
 # list the indices
 curl -GET $elastic_endpoint/_cat/indices
 # count the records in the index
-curl -GET $elastic_endpoint/elkstack/_count
+curl -GET $elastic_endpoint/elkstack-test/_count
 ```
 
 In the Filebeats Instance generate new logfiles

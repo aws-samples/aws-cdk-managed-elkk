@@ -29,7 +29,7 @@ external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 class KafkaStack(core.Stack):
     def __init__(
-        self, scope: core.Construct, id: str, my_vpc, client: bool = True, **kwargs
+        self, scope: core.Construct, id: str, vpc_stack, client: bool = True, **kwargs
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
@@ -67,7 +67,7 @@ class KafkaStack(core.Stack):
         self.kafka_client_security_group = ec2.SecurityGroup(
             self,
             "kafka_client_security_group",
-            vpc=my_vpc,
+            vpc=vpc_stack.get_vpc,
             description="kafka client security group",
             allow_all_outbound=True,
         )
@@ -79,27 +79,27 @@ class KafkaStack(core.Stack):
         )
 
         # security group for kafka
-        kafka_security_group = ec2.SecurityGroup(
+        self.kafka_security_group = ec2.SecurityGroup(
             self,
             "kafka_security_group",
-            vpc=my_vpc,
+            vpc=vpc_stack.get_vpc,
             description="kafka security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(kafka_security_group, "project", ELK_PROJECT_TAG)
-        core.Tag.add(kafka_security_group, "Name", "kafka_sg")
+        core.Tag.add(self.kafka_security_group, "project", ELK_PROJECT_TAG)
+        core.Tag.add(self.kafka_security_group, "Name", "kafka_sg")
         # add ingress for kafka security group
-        kafka_security_group.connections.allow_from(
-            kafka_security_group, ec2.Port.all_traffic(), "within kafka sg",
+        self.kafka_security_group.connections.allow_from(
+            self.kafka_security_group, ec2.Port.all_traffic(), "within kafka sg",
         )
-        kafka_security_group.connections.allow_from(
+        self.kafka_security_group.connections.allow_from(
             self.kafka_client_security_group,
             ec2.Port.all_traffic(),
             "from kafka client sg",
         )
         # ingress for kc sg
         self.kafka_client_security_group.connections.allow_from(
-            kafka_security_group, ec2.Port.all_traffic(), "from kafka sg",
+            self.kafka_security_group, ec2.Port.all_traffic(), "from kafka sg",
         )
 
         # create the kafka cluster
@@ -107,12 +107,13 @@ class KafkaStack(core.Stack):
             self,
             "kafka_cluster",
             broker_node_group_info={
-                "clientSubnets": my_vpc.select_subnets(
-                    subnet_type=ec2.SubnetType.PUBLIC
-                ).subnet_ids,
+                "clientSubnets": vpc_stack.get_vpc_public_subnet_ids,
+                # "clientSubnets": my_vpc.select_subnets(
+                #     subnet_type=ec2.SubnetType.PUBLIC
+                # ).subnet_ids,
                 "instanceType": ELK_KAFKA_INSTANCE_TYPE,
                 "numberOfBrokerNodes": ELK_KAFKA_BROKER_NODES,
-                "securityGroups": [kafka_security_group.security_group_id],
+                "securityGroups": [self.kafka_security_group.security_group_id],
             },
             encryption_info={
                 # set clientBroker to one of: TLS, TLS_PLAINTEXT, or PLAINTEXT.
@@ -146,7 +147,7 @@ class KafkaStack(core.Stack):
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
-                vpc=my_vpc,
+                vpc=vpc_stack.get_vpc,
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
                 user_data=kafka_client_userdata,
                 key_name=ELK_KEY_PAIR,
@@ -174,3 +175,7 @@ class KafkaStack(core.Stack):
     @property
     def get_kafka_client_security_group(self):
         return self.kafka_client_security_group
+
+    @property
+    def get_kafka_security_group(self):
+        return self.kafka_security_group

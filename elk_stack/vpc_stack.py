@@ -22,8 +22,17 @@ class VpcStack(core.Stack):
             service=ec2.GatewayVpcEndpointAwsService.S3,
         )
 
-    # properties
+    # properties to share with other stacks ...
     @property
     def get_vpc(self):
         return self.elk_vpc
 
+    @property
+    def get_vpc_public_subnet_ids(self):
+        return self.elk_vpc.select_subnets(subnet_type=ec2.SubnetType.PUBLIC).subnet_ids
+
+    @property
+    def get_vpc_private_subnet_ids(self):
+        return self.elk_vpc.select_subnets(
+            subnet_type=ec2.SubnetType.PRIVATE
+        ).subnet_ids

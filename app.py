@@ -23,7 +23,7 @@ vpc_stack = VpcStack(
 kafka_stack = KafkaStack(
     app,
     "elk-kafka",
-    vpc_stack.get_vpc,
+    vpc_stack,
     client=True,
     env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
 )
@@ -33,8 +33,7 @@ kafka_stack.add_dependency(vpc_stack)
 elastic_stack = ElasticStack(
     app,
     "elk-elastic",
-    vpc_stack.get_vpc,
-    kafka_stack,
+    vpc_stack,
     client=True,
     env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
 )
@@ -44,8 +43,8 @@ elastic_stack.add_dependency(vpc_stack)
 filebeat_stack = FilebeatStack(
     app,
     "elk-filebeat",
-    vpc_stack.get_vpc,
-    kafka_stack.get_kafka_client_security_group,
+    vpc_stack,
+    kafka_stack,
     env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
 )
 filebeat_stack.add_dependency(kafka_stack)
@@ -62,8 +61,7 @@ athena_stack.add_dependency(vpc_stack)
 logstash_stack = LogstashStack(
     app,
     "elk-logstash",
-    vpc_stack.get_vpc,
-    kafka_stack,
+    vpc_stack,
     env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
 )
 logstash_stack.add_dependency(kafka_stack)

@@ -28,8 +28,8 @@ class ElasticStack(core.Stack):
         self,
         scope: core.Construct,
         id: str,
-        myvpc,
-        mymsk,
+        vpc_stack,
+        # kafka_stack,
         client: bool = True,
         **kwargs,
     ) -> None:
@@ -40,39 +40,49 @@ class ElasticStack(core.Stack):
             self, "elastic_sh", path=os.path.join(dirname, "elastic.sh")
         )
 
-        # get client security group from kafka stack
-        logstash_security_group = ec2.SecurityGroup.from_security_group_id(
+        # security group for elastic client
+        elastic_client_security_group = ec2.SecurityGroup(
             self,
-            "logstash_security_group",
-            security_group_id=mymsk.kafka_client_security_group.security_group_id,
+            "elastic_client_security_group",
+            vpc=vpc_stack.get_vpc,
+            description="elastic client security group",
+            allow_all_outbound=True,
+        )
+        core.Tag.add(elastic_client_security_group, "project", ELK_PROJECT_TAG)
+        core.Tag.add(elastic_client_security_group, "Name", "elastic_client_sg")
+        # Open port 22 for SSH
+        elastic_client_security_group.add_ingress_rule(
+            ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(22), "from own public ip",
+        )
+        # Open port for proxy
+        elastic_client_security_group.add_ingress_rule(
+            ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(8157), "for kibana proxy",
         )
 
         # security group for elastic
         elastic_security_group = ec2.SecurityGroup(
             self,
             "elastic_security_group",
-            vpc=myvpc,
+            vpc=vpc_stack.get_vpc,
             description="elastic security group",
             allow_all_outbound=True,
         )
         core.Tag.add(elastic_security_group, "project", ELK_PROJECT_TAG)
         core.Tag.add(elastic_security_group, "Name", "elastic_sg")
-        # Open port 22 for SSH
-        elastic_security_group.add_ingress_rule(
-            ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(22), "from own public ip",
-        )
-        # ingress for elastic sg
+
+        # ingress for elastic from self 
         elastic_security_group.connections.allow_from(
             elastic_security_group, ec2.Port.all_traffic(), "from elastic sg",
         )
-        # ingress for logstash in kafka client group
+        # ingress for elastic from elastic client
         elastic_security_group.connections.allow_from(
-            logstash_security_group, ec2.Port.all_traffic(), "from logstash sg",
+            elastic_client_security_group, ec2.Port.all_traffic(), "from elastic client sg",
         )
-        # Open port for proxy
-        elastic_security_group.add_ingress_rule(
-            ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(8157), "for kibana proxy",
+        # ingress for elastic client from elastic
+        elastic_client_security_group.connections.allow_from(
+            elastic_security_group, ec2.Port.all_traffic(), "from elastic sg",
         )
+
         # elastic policy
         elastic_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW, actions=["es:*",], resources=["*"],
@@ -80,6 +90,7 @@ class ElasticStack(core.Stack):
         elastic_policy.add_any_principal()
         elastic_document = iam.PolicyDocument()
         elastic_document.add_statements(elastic_policy)
+
         # create the elastic cluster
         elastic_domain = aes.CfnDomain(
             self,
@@ -97,9 +108,7 @@ class ElasticStack(core.Stack):
             ebs_options={"ebsEnabled": True, "volumeSize": 10},
             vpc_options={
                 "securityGroupIds": [elastic_security_group.security_group_id],
-                "subnetIds": myvpc.select_subnets(
-                    subnet_type=ec2.SubnetType.PRIVATE
-                ).subnet_ids,
+                "subnetIds": vpc_stack.get_vpc_private_subnet_ids
             },
             access_policies=elastic_document,
         )
@@ -126,11 +135,11 @@ class ElasticStack(core.Stack):
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
-                vpc=myvpc,
+                vpc=vpc_stack.get_vpc,
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
                 user_data=elastic_userdata,
                 key_name=ELK_KEY_PAIR,
-                security_group=elastic_security_group,
+                security_group=elastic_client_security_group,
             )
             core.Tag.add(elastic_instance, "project", ELK_PROJECT_TAG)
             # needs kafka cluster to be available

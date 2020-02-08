@@ -22,13 +22,16 @@ external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 
 class FilebeatStack(core.Stack):
-    def __init__(self, scope: core.Construct, id: str, my_vpc, my_sg, **kwargs) -> None:
+    def __init__(
+        self, scope: core.Construct, id: str, vpc_stack, kafka_stack, **kwargs
+    ) -> None:
         super().__init__(scope, id, **kwargs)
 
         # assets for filebeat
         filebeat_sh = assets.Asset(
             self, "filebeat_sh", path=os.path.join(dirname, "filebeat.sh")
         )
+
         # get kakfa brokers
         kafkaclient = boto3.client("kafka")
         kafka_clusters = kafkaclient.list_clusters()
@@ -75,11 +78,11 @@ class FilebeatStack(core.Stack):
             machine_image=ec2.AmazonLinuxImage(
                 generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
             ),
-            vpc=my_vpc,
+            vpc=vpc_stack.get_vpc,
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
             user_data=fb_userdata,
             key_name=ELK_KEY_PAIR,
-            security_group=my_sg,
+            security_group=kafka_stack.get_kafka_client_security_group,
         )
         core.Tag.add(fb_instance, "project", ELK_PROJECT_TAG)
         # create policies for ec2 to connect to kafka
