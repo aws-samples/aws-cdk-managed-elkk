@@ -298,7 +298,7 @@ In the Filebeats Instance generate new logfiles
 
 ```bash
 # geneate new logs
-python ./Fake-Apache-Log-Generator/apache-fake-log-gen.py -n 100 -o LOG -p /home/ec2-user/log/
+python ./Fake-Apache-Log-Generator/apache-fake-log-gen.py -n 100 -o LOG -p /home/ec2-user/log/ -l CLF
 ```
 
 In Kibana view the new logs

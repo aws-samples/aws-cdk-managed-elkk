@@ -6,7 +6,7 @@ from aws_cdk import (
     aws_iam as iam,
 )
 from elk_stack.custom_resource import CustomResource
-from elk_stack.constants import ELK_PROJECT_TAG
+from elk_stack.constants import ELK_PROJECT_TAG, ELK_TOPIC
 import os
 
 # set path
@@ -37,7 +37,7 @@ class AthenaStack(core.Stack):
             "s3_files",
             sources=[s3_deployment.Source.asset(os.path.join(dirname, "s3_files"))],
             destination_bucket=self.s3_bucket,
-            destination_key_prefix="elkstack/2020/02/09",
+            destination_key_prefix=f"{ELK_TOPIC}/2020/02/09",
         )
 
         # lambda policies
