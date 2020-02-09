@@ -54,10 +54,6 @@ class ElasticStack(core.Stack):
         elastic_client_security_group.add_ingress_rule(
             ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(22), "from own public ip",
         )
-        # Open port for proxy
-        elastic_client_security_group.add_ingress_rule(
-            ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(8157), "for kibana proxy",
-        )
         # Open port for tunnel
         elastic_client_security_group.add_ingress_rule(
             ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(9200), "for ssh tunnel",
@@ -76,15 +72,15 @@ class ElasticStack(core.Stack):
 
         # ingress for elastic from self 
         elastic_security_group.connections.allow_from(
-            elastic_security_group, ec2.Port.all_traffic(), "within elastic sg",
+            elastic_security_group, ec2.Port.all_traffic(), "within elastic",
         )
         # ingress for elastic from elastic client
         elastic_security_group.connections.allow_from(
-            elastic_client_security_group, ec2.Port.all_traffic(), "from elastic client sg",
+            elastic_client_security_group, ec2.Port.all_traffic(), "from elastic client",
         )
         # ingress for elastic client from elastic
         elastic_client_security_group.connections.allow_from(
-            elastic_security_group, ec2.Port.all_traffic(), "from elastic sg",
+            elastic_security_group, ec2.Port.all_traffic(), "from elastic",
         )
 
         # elastic policy

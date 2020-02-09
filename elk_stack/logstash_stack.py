@@ -121,7 +121,7 @@ class LogstashStack(core.Stack):
             ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(22), "from own public ip",
         )
 
-        # get security group for kafka 
+        # get security group for kafka
         ec2client = boto3.client("ec2")
         security_groups = ec2client.describe_security_groups(
             Filters=[{"Name": "tag-value", "Values": [ELK_PROJECT_TAG,]},],

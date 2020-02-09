@@ -249,10 +249,7 @@ elastic_domain=`aws es list-domain-names --region us-east-1 | jq '.DomainNames[0
 # get the elastic endpoint
 elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 | jq -r '.DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # create the tunnel
-# ssh -i ~/.ssh/your-key.pem ec2-user@your-ec2-instance-public-ip -N -L 9200:vpc-your-amazon-es-domain.region.es.amazonaws.com:443
 ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443
-# or 
-ssh -L 9200:$elastic_endpoint:443 ec2-user@$elastic_dns
 ```
 
 Leave the tunnel terminal window open.
@@ -291,18 +288,17 @@ While connected to logstash instance:
 cat /etc/logstash/conf.d/logstash.conf
 # verify the logstash config
 /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.d/logstash.conf
-# get the elastic domain
+# check the logstash connection to elastic
 elastic_domain=`aws es list-domain-names --region us-east-1 | jq '.DomainNames[0].DomainName' -r` && echo $elastic_domain
 # get the elastic endpoint
 elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 | jq -r '.DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
-# curl a doc into elasticsearch
-curl -XPOST $elastic_endpoint/elkstack-test/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
-# curl to query elasticsearch
-curl -XPOST $elastic_endpoint/elkstack-test/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
 # list the indices
 curl -GET $elastic_endpoint/_cat/indices
 # count the records in the index
 curl -GET $elastic_endpoint/elkstack-test/_count
+# check the s3 connection
+aws s3 ls
+
 ```
 
 In the Filebeats Instance generate new logfiles
@@ -312,12 +308,4 @@ In the Filebeats Instance generate new logfiles
 python ./Fake-Apache-Log-Generator/apache-fake-log-gen.py -n 100 -o LOG -p /home/ec2-user/log/
 ```
 
-In the logstash instance recount the index to confirm the records have arrived at Elastic
-
 In Kibana view the new logs
-
-### Tunnel Version In One Linee
-
-Throws errors when navigating to https://localhost:9200
-
-```

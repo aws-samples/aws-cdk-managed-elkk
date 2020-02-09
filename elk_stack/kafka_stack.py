@@ -90,7 +90,7 @@ class KafkaStack(core.Stack):
         core.Tag.add(self.kafka_security_group, "Name", "kafka_sg")
         # add ingress for kafka security group
         self.kafka_security_group.connections.allow_from(
-            self.kafka_security_group, ec2.Port.all_traffic(), "within kafka sg",
+            self.kafka_security_group, ec2.Port.all_traffic(), "within kafka",
         )
         self.kafka_security_group.connections.allow_from(
             self.kafka_client_security_group,
@@ -99,7 +99,7 @@ class KafkaStack(core.Stack):
         )
         # ingress for kc sg
         self.kafka_client_security_group.connections.allow_from(
-            self.kafka_security_group, ec2.Port.all_traffic(), "from kafka sg",
+            self.kafka_security_group, ec2.Port.all_traffic(), "from kafka",
         )
 
         # create the kafka cluster

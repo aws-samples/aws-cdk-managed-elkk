@@ -24,14 +24,6 @@ yum install logstash -y
 # add user to logstash group
 usermod -a -G logstash ec2-user
 
-# get domain details and update logstash.conf
-elastic_domain=`aws es list-domain-names --region us-east-1 | jq '.DomainNames[0].DomainName' -r` && echo $elastic_domain
-elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 | jq -r '.DomainStatus.Endpoints.vpc' | sed 's/^/\ "/' | sed 's/$/"\ /'` && echo $elastic_endpoint
-sed -i "s/elastic_endpoint/$elastic_endpoint/" /home/ec2-user/logstash.conf
-kafka_arn=`aws kafka list-clusters --region us-east-1 --output json --query 'ClusterInfoList[*].ClusterArn' | jq '.[0]' -r` && echo $kafka_arn
-kafka_brokers=`aws kafka get-bootstrap-brokers --region us-east-1 --cluster-arn $kafka_arn --output json | jq -r '.BootstrapBrokerString' | sed 's/^/\ "/' | sed 's/$/"\ /'` && echo $kafka_brokers
-sed -i "s/kafka_brokers/$kafka_brokers/" /home/ec2-user/logstash.conf
-
 # move logstash.yml to final location
 mv -f /home/ec2-user/logstash.yml /etc/logstash/logstash.yml
 # move logstash.conf to final location
@@ -42,6 +34,11 @@ mv -f /home/ec2-user/logstash-output-amazon_es /usr/share/logstash/plugins/logst
 
 # update gemfile
 sed -i '5igem "logstash-output-amazon_es", :path => "/usr/share/logstash/plugins/logstash-output-amazon_es"' /usr/share/logstash/Gemfile
+# update ownership
+chown -R logstash:logstash /etc/logstash
+
+# start logstash
+sudo -u logstash systemctl start logstash.service
 
 # complete
 echo Complete setup script
