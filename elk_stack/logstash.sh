@@ -10,6 +10,10 @@ yum install jq -y
 amazon-linux-extras install java-openjdk11 -y
 # install git
 yum install git -y
+# install supervisord
+curl -O https://bootstrap.pypa.io/get-pip.py
+python get-pip.py --user
+python -m pip install supervisor
 
 # get elastic output to es
 git clone https://github.com/awslabs/logstash-output-amazon_es.git /home/ec2-user/logstash-output-amazon_es
@@ -38,7 +42,7 @@ sed -i '5igem "logstash-output-amazon_es", :path => "/usr/share/logstash/plugins
 chown -R logstash:logstash /etc/logstash
 
 # start logstash
-sudo -u logstash systemctl start logstash.service
+systemctl start logstash.service
 
 # complete
 echo Complete setup script

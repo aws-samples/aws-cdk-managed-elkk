@@ -29,6 +29,9 @@ class AthenaStack(core.Stack):
         )
         # tag the bucket
         core.Tag.add(self.s3_bucket, "project", ELK_PROJECT_TAG)
+        
+        # load the sample data file into s3
+        # elkstack/2020/02/09/ls.s3.6b510ecb-d9dd-4877-bf3b-32c78b9bccc6.2020-02-09T10.26.part2.txt
 
         # lambda policies
         s3_cleaner_policies = [
