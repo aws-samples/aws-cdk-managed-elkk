@@ -288,17 +288,10 @@ While connected to logstash instance:
 cat /etc/logstash/conf.d/logstash.conf
 # verify the logstash config
 /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.d/logstash.conf
-# check the logstash connection to elastic
-elastic_domain=`aws es list-domain-names --region us-east-1 | jq '.DomainNames[0].DomainName' -r` && echo $elastic_domain
-# get the elastic endpoint
-elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 | jq -r '.DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
-# list the indices
-curl -GET $elastic_endpoint/_cat/indices
-# count the records in the index
-curl -GET $elastic_endpoint/elkstack-test/_count
-# check the s3 connection
-aws s3 ls
-
+# check the logstash status
+service logstash status -l
+# if logstash isn't running then restart it
+service logstash start
 ```
 
 In the Filebeats Instance generate new logfiles
