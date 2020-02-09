@@ -29,6 +29,8 @@ yum install filebeat -y
 # move filebeat.yml to final location
 mv -f /home/ec2-user/filebeat.yml /etc/filebeat/filebeat.yml
 # start filebeat
-service filebeat start
+systemctl start filebeat
+systemctl enable filebeat
+systemctl status filebeat
 # complete
 echo Complete setup script

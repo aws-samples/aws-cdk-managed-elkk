@@ -242,53 +242,22 @@ exit
 Create an SSH tunnel to Kibana.
 
 ```bash
+# get the elastic instance public dns
+elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --query "Reservations[*].Instances[*].{Instance:PublicDnsName}" --output json | jq -r '.[0][0].Instance'` && echo $elastic_dns
 # get the elastic domain
 elastic_domain=`aws es list-domain-names --region us-east-1 | jq '.DomainNames[0].DomainName' -r` && echo $elastic_domain
 # get the elastic endpoint
 elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 | jq -r '.DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
-```
-
-The variable $elastic_endpoint will be used for the socks proxy.
-
-Configure the SOCKS proxy
-
-Add FoxyProxy Standard to Internet Browser  
-Open FoxyProxy, and then choose Options  
-Choose Add to add a new proxy  
-On the "Add" page enter the inputs below:
-
-```bash
-Title or Description (optional) = "Kibana Proxy"
-Proxy Type = "SOCKS5"
-Proxy IP address or DNS name = "localhost"
-Port = "8157"
-```
-
-Select "Save and Edit Patterns"  
-On the "Edit Patterns" page enter the inputs below:  
-
-```bash
-Name = "VPC Endpoint"
-Pattern = $elastic_endpoint 
-Type = "Wildcard"
-```
-
-Select "Save"
-
-Create the SSH Tunnel
-
-Better: https://www.jeremydaly.com/access-aws-vpc-based-elasticsearch-cluster-locally/
-
-```bash
-# get the elastic instance public dns
-elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --query "Reservations[*].Instances[*].{Instance:PublicDnsName}" --output json | jq -r '.[0][0].Instance'` && echo $elastic_dns
-# build the tunnelget the elastic domain
-ssh ec2-user@$elastic_dns -ND 8157
+# create the tunnel
+# ssh -i ~/.ssh/your-key.pem ec2-user@your-ec2-instance-public-ip -N -L 9200:vpc-your-amazon-es-domain.region.es.amazonaws.com:443
+ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443
+# or 
+ssh -L 9200:$elastic_endpoint:443 ec2-user@$elastic_dns
 ```
 
 Leave the tunnel terminal window open.
 
-Open ${elastic_endpoint}/_plugin/kibana/ to navigate to Kibana via the elastic proxy instance.
+Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana.
 
 ## Create S3 and Athena
 
@@ -346,3 +315,9 @@ python ./Fake-Apache-Log-Generator/apache-fake-log-gen.py -n 100 -o LOG -p /home
 In the logstash instance recount the index to confirm the records have arrived at Elastic
 
 In Kibana view the new logs
+
+### Tunnel Version In One Linee
+
+Throws errors when navigating to https://localhost:9200
+
+```

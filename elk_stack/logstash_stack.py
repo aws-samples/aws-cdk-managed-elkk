@@ -39,6 +39,7 @@ class LogstashStack(core.Stack):
             ][0]
         except IndexError:
             s3_bucket_name = ""
+
         # get elastic endpoint
         esclient = boto3.client("es")
         es_domains = esclient.list_domain_names()
@@ -120,7 +121,7 @@ class LogstashStack(core.Stack):
             ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(22), "from own public ip",
         )
 
-        # get security groups from elastic and kafka
+        # get security group for kafka 
         ec2client = boto3.client("ec2")
         security_groups = ec2client.describe_security_groups(
             Filters=[{"Name": "tag-value", "Values": [ELK_PROJECT_TAG,]},],
@@ -129,18 +130,27 @@ class LogstashStack(core.Stack):
             sg["GroupId"]
             for sg in security_groups["SecurityGroups"]
             if "kafka security group" in sg["Description"]
-        ]
-        print("kafka_sg_id", kafka_sg_id)
+        ][0]
+        kafka_security_group = ec2.SecurityGroup.from_security_group_id(
+            self, "kafka_security_group", security_group_id=kafka_sg_id
+        )
+        # let in logstash
+        kafka_security_group.connections.allow_from(
+            logstash_security_group, ec2.Port.all_traffic(), "from logstash",
+        )
+        # get security group for elastic
         elastic_sg_id = [
             sg["GroupId"]
             for sg in security_groups["SecurityGroups"]
             if "elastic security group" in sg["Description"]
-        ]
-        print("elastic_sg_id", elastic_sg_id)
-        # kafka from logstash
-        # kafka_stack.get_kafka_security_group.add_ingress_rule(
-        #     logstash_security_group, ec2.Port.all_traffic(), "from logstash sg",
-        # )
+        ][0]
+        elastic_security_group = ec2.SecurityGroup.from_security_group_id(
+            self, "elastic_security_group", security_group_id=elastic_sg_id
+        )
+        # let in logstash
+        elastic_security_group.connections.allow_from(
+            logstash_security_group, ec2.Port.all_traffic(), "from logstash",
+        )
 
         # create the logstash instance
         logstash_instance = ec2.Instance(

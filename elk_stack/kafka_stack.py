@@ -162,7 +162,6 @@ class KafkaStack(core.Stack):
                 actions=[
                     "kafka:ListClusters",
                     "kafka:GetBootstrapBrokers",
-                    # "kafka:DescribeCluster",
                 ],
                 resources=["*"],
             )
