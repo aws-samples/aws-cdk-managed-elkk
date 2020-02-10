@@ -11,7 +11,6 @@ from aws_cdk import (
 from elk_stack.constants import (
     ELK_PROJECT_TAG,
     ELK_KEY_PAIR,
-    ELK_LOGSTASH_S3,
     ELK_REGION,
     ELK_TOPIC,
     ELK_LOGSTASH_INSTANCE,

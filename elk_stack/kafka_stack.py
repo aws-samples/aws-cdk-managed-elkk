@@ -55,7 +55,7 @@ class KafkaStack(core.Stack):
                 "$kafka_zookeeper": kafka_zookeeper,
                 "$elk_topic": ELK_TOPIC,
                 "$kafka_download_version": ELK_KAFKA_DOWNLOAD_VERSION,
-                "$kafka_version": ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1]
+                "$kafka_version": ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1],
             },
         )
         kafka_sh = assets.Asset(self, "kafka_sh", path=kafka_sh_asset)
@@ -108,16 +108,15 @@ class KafkaStack(core.Stack):
             "kafka_cluster",
             broker_node_group_info={
                 "clientSubnets": vpc_stack.get_vpc_public_subnet_ids,
-                # "clientSubnets": my_vpc.select_subnets(
-                #     subnet_type=ec2.SubnetType.PUBLIC
-                # ).subnet_ids,
                 "instanceType": ELK_KAFKA_INSTANCE_TYPE,
                 "numberOfBrokerNodes": ELK_KAFKA_BROKER_NODES,
                 "securityGroups": [self.kafka_security_group.security_group_id],
             },
             encryption_info={
-                # set clientBroker to one of: TLS, TLS_PLAINTEXT, or PLAINTEXT.
-                "encryptionInTransit": {"clientBroker": "PLAINTEXT"},
+                "encryptionInTransit": {
+                    "InCluster": "true",
+                    "clientBroker": "PLAINTEXT",
+                },
             },
             cluster_name=ELK_PROJECT_TAG,
             kafka_version=ELK_KAFKA_VERSION,
@@ -159,10 +158,7 @@ class KafkaStack(core.Stack):
             # create policies for ec2 to connect to kafka
             access_kafka_policy = iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=[
-                    "kafka:ListClusters",
-                    "kafka:GetBootstrapBrokers",
-                ],
+                actions=["kafka:ListClusters", "kafka:GetBootstrapBrokers",],
                 resources=["*"],
             )
             # add the role permissions

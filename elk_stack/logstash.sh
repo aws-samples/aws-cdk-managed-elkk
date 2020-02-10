@@ -11,9 +11,9 @@ amazon-linux-extras install java-openjdk11 -y
 # install git
 yum install git -y
 # install supervisord
+yum install python-pip -y
 curl -O https://bootstrap.pypa.io/get-pip.py
 python get-pip.py --user
-python -m pip install supervisor
 
 # get elastic output to es
 git clone https://github.com/awslabs/logstash-output-amazon_es.git /home/ec2-user/logstash-output-amazon_es
