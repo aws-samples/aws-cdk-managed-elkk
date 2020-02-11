@@ -8,7 +8,7 @@ Because: Filebeat > Kafka > Logstash > ElasticSearch > Kibana
 AWS CDK - https://docs.aws.amazon.com/cdk/index.html
 AWS CLI - https://aws.amazon.com/cli/
 Git -  https://git-scm.com/downloads
-pyenv - https://github.com/pyenv/pyenv (https://github.com/pyenv-win/pyenv-win for Windows)
+python (3.6 or later) - https://www.python.org/downloads/ 
 jq - https://stedolan.github.io/jq/download/
 
 ### Set up the Environment
@@ -20,45 +20,43 @@ Clone the Git repository, create the python environment and install the python d
 git clone https://github.com/fmcmac/elk-stack.git
 # move to directory
 cd elk-stack
-# check the python versions
-pyenv versions
-# install python 3.7.5 if not present
-pyenv install 3.7.5
-# set the local version to 3.7.5
-pyenv local 3.7.5
-# create the venv
+# create the virtual environment
 python -m venv .env
+# activate the virtual environment
+(MacOs) source .env/bin/activate
+(Windows) .env\Scripts\activate.bat
 # download requirements
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-Note that the key_pair name "ElkKeyPair" is held in elk_stack/constants.py
-
 ```bash
+# name the key pair
+yourkeypair="yourkeypair"
+yourregion="yourregion"
 # create the key pair
-aws ec2 create-key-pair --key-name ElkKeyPair --query 'KeyMaterial' --output text > ElkKeyPair.pem --region us-east-1
+aws ec2 create-key-pair --key-name $yourkeypair --query 'KeyMaterial' --output text > $yourkeypair.pem --region $yourregion
 # update key_pair permissions
-chmod 400 ElkKeyPair.pem
+chmod 400 $yourkeypair.pem
 # move key_pair to .ssh
-mv ElkKeyPair.pem $HOME/.ssh/ElkKeyPair.pem
+mv $yourkeypair.pem $HOME/.ssh/ElkKeyPair.pem
 # add ssh key to keychain
-ssh-add ~/.ssh/ElkKeyPair.pem
+ssh-add ~/.ssh/$yourkeypair.pem
 ```
 
 ### Set the configuration
 
-Create a file in the project root as "elk_stack/constants.py"  
+Create a file in the project "elk_stack" folder as "constants.py"  
 
-Create the file content as below file with the correct region and account (note these need to be hard coded and can't use psudoparameters)  
+Create the file content as below file with the correct region and account, ensure that the keypair name matches that used previously
 
 ```python
 #!/usr/bin/env python3
 
 # project level constants
 ELK_PROJECT_TAG = "elk-stack"
-ELK_KEY_PAIR = "${your-keypair}"
-ELK_REGION = "${your-region}"
-ELK_ACCOUNT = "${your-account}"
+ELK_KEY_PAIR = "yourkeypair"
+ELK_REGION = "yourregion"
+ELK_ACCOUNT = "youraccount"
 
 # kafka settings
 ELK_KAFKA_DOWNLOAD_VERSION = "kafka_2.12-2.4.0"
@@ -83,9 +81,13 @@ ELK_ELASTIC_VERSION = "7.1"
 ELK_LOGSTASH_INSTANCE = "t2.xlarge"
 ```
 
-Note that this code is designed to work from us-east-1.
-
 Run all terminal comments from the project root directory.
+
+Confrim that the project is correctly set up.
+
+```bash
+cdk synth
+```
 
 ### Boostrap the CDK
 
@@ -120,7 +122,7 @@ From a terminal window connect to the Kafka client instance to create a producer
 
 ```bash
 # get the instance public dns
-kafka_client_dns=`aws ec2 describe-instances --filter file://kafka_filter.json --query "Reservations[*].Instances[*].{Instance:PublicDnsName}" --output json | jq -r '.[0][0].Instance'` && echo $kafka_client_dns
+kafka_client_dns=`aws ec2 describe-instances --filter file://kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
 # use the public dns to connect to the instance
 ssh ec2-user@$kafka_client_dns
 ```
@@ -129,9 +131,9 @@ While connected to the Kafka client instance create the producer session:
 
 ```bash
 # Get the cluster ARN
-kafka_arn=`aws kafka list-clusters --region us-east-1 --output json --query 'ClusterInfoList[*].ClusterArn' | jq '.[0]' -r` && echo $kafka_arn
+kafka_arn=`aws kafka list-clusters --region us-east-1 --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
 # Get the bootstrap brokers
-kafka_brokers=`aws kafka get-bootstrap-brokers --region us-east-1 --cluster-arn $kafka_arn | jq -r '.BootstrapBrokerString'` && echo $kafka_brokers
+kafka_brokers=`aws kafka get-bootstrap-brokers --region us-east-1 --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a producer 
 /opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkstacktopic
 ```
@@ -142,7 +144,7 @@ From a new terminal window connect to the Kafka client instance to create consum
 
 ```bash
 # get the instance public dns
-kafka_client_dns=`aws ec2 describe-instances --filter file://kafka_filter.json --query "Reservations[*].Instances[*].{Instance:PublicDnsName}" --output json | jq -r '.[0][0].Instance'` && echo $kafka_client_dns
+kafka_client_dns=`aws ec2 describe-instances --filter file://kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
 # use the public dns to connect to the instance
 ssh ec2-user@$kafka_client_dns
 ```
@@ -151,9 +153,9 @@ While connected to the Kafka client instance create the consumer session:
 
 ```bash
 # Get the cluster ARN
-kafka_arn=`aws kafka list-clusters --region us-east-1 --output json --query 'ClusterInfoList[*].ClusterArn' | jq '.[0]' -r` && echo $kafka_arn
+kafka_arn=`aws kafka list-clusters --region us-east-1 --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
 # Get the bootstrap brokers
-kafka_brokers=`aws kafka get-bootstrap-brokers --region us-east-1 --cluster-arn $kafka_arn | jq -r '.BootstrapBrokerString'` && echo $kafka_brokers
+kafka_brokers=`aws kafka get-bootstrap-brokers --region us-east-1 --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a consumer
 /opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkstacktopic --from-beginning
 ```

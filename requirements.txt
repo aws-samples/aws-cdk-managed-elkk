@@ -9,4 +9,6 @@ aws_cdk.aws_elasticsearch
 aws_cdk.aws_s3_assets
 aws_cdk.aws_lambda
 aws_cdk.aws_s3
+aws_cdk.aws_cloudformation
+aws_cdk.aws_s3_deployment
 boto3

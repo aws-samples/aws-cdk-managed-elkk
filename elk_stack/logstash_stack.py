@@ -6,7 +6,7 @@ from aws_cdk import (
     aws_ec2 as ec2,
     aws_s3_assets as assets,
     aws_iam as iam,
-    aws_cloudformation as cfn,
+    # aws_cloudformation as cfn,
 )
 from elk_stack.constants import (
     ELK_PROJECT_TAG,
@@ -125,32 +125,38 @@ class LogstashStack(core.Stack):
         security_groups = ec2client.describe_security_groups(
             Filters=[{"Name": "tag-value", "Values": [ELK_PROJECT_TAG,]},],
         )
-        kafka_sg_id = [
-            sg["GroupId"]
-            for sg in security_groups["SecurityGroups"]
-            if "kafka security group" in sg["Description"]
-        ][0]
-        kafka_security_group = ec2.SecurityGroup.from_security_group_id(
-            self, "kafka_security_group", security_group_id=kafka_sg_id
-        )
-        # let in logstash
-        kafka_security_group.connections.allow_from(
-            logstash_security_group, ec2.Port.all_traffic(), "from logstash",
-        )
+        # if kafka sg does not exist ... don't add it
+        try:
+            kafka_sg_id = [
+                sg["GroupId"]
+                for sg in security_groups["SecurityGroups"]
+                if "kafka security group" in sg["Description"]
+            ][0]
+            kafka_security_group = ec2.SecurityGroup.from_security_group_id(
+                self, "kafka_security_group", security_group_id=kafka_sg_id
+            )
+            # let in logstash
+            kafka_security_group.connections.allow_from(
+                logstash_security_group, ec2.Port.all_traffic(), "from logstash",
+            )
+        except IndexError:
+            pass
         # get security group for elastic
-        elastic_sg_id = [
-            sg["GroupId"]
-            for sg in security_groups["SecurityGroups"]
-            if "elastic security group" in sg["Description"]
-        ][0]
-        elastic_security_group = ec2.SecurityGroup.from_security_group_id(
-            self, "elastic_security_group", security_group_id=elastic_sg_id
-        )
-        # let in logstash
-        elastic_security_group.connections.allow_from(
-            logstash_security_group, ec2.Port.all_traffic(), "from logstash",
-        )
-
+        try:
+            elastic_sg_id = [
+                sg["GroupId"]
+                for sg in security_groups["SecurityGroups"]
+                if "elastic security group" in sg["Description"]
+            ][0]
+            elastic_security_group = ec2.SecurityGroup.from_security_group_id(
+                self, "elastic_security_group", security_group_id=elastic_sg_id
+            )
+            # let in logstash
+            elastic_security_group.connections.allow_from(
+                logstash_security_group, ec2.Port.all_traffic(), "from logstash",
+            )
+        except IndexError:
+            pass
         # create the logstash instance
         logstash_instance = ec2.Instance(
             self,
