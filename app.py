@@ -24,7 +24,7 @@ kafka_stack = KafkaStack(
     app,
     "elk-kafka",
     vpc_stack,
-    client=False,
+    client=True,
     env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
 )
 kafka_stack.add_dependency(vpc_stack)

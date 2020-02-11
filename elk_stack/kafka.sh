@@ -10,7 +10,7 @@ yum install jq -y
 yum install java-1.8.0 -y
 
 # install kakfa
-wget https://www-eu.apache.org/dist/kafka/$kafka_version/$kafka_download_version.tgz
+wget https://www-us.apache.org/dist/kafka/$kafka_version/$kafka_download_version.tgz
 tar -xvf $kafka_download_version.tgz
 mv $kafka_download_version /opt
 rm $kafka_download_version.tgz
