@@ -316,9 +316,10 @@ python ./Fake-Apache-Log-Generator/apache-fake-log-gen.py -n 10 -o LOG -p /home/
 
 In Kibana view the new logs
 
-### Cleanup Environment
+### Cleanup
 
-To clean up the stacks... destroy the elk-vpc stack, all other stacks will be torn down due to dependancies.
+To clean up the stacks... destroy the elk-vpc stack, all other stacks will be torn down due to dependancies. 
+Cloudwatch logs will need to be separately removed.
 
 ```bash
 cdk destroy elk-vpc
