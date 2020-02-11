@@ -5,35 +5,29 @@ Because: Filebeat > Kafka > Logstash > ElasticSearch > Kibana
 
 ## Prerequisites
 
-npm - https://www.npmjs.com/get-npm  
-brew - https://brew.sh/  
-aws cli - https://docs.aws.amazon.com/cli/index.html  
+AWS CDK - https://docs.aws.amazon.com/cdk/index.html
+AWS CLI - https://aws.amazon.com/cli/
+Git -  https://git-scm.com/downloads
+pyenv - https://github.com/pyenv/pyenv (https://github.com/pyenv-win/pyenv-win for Windows)
+jq - https://stedolan.github.io/jq/download/
 
 ### Set up the Environment
 
-Clone the Git repo, install pyenv, install python dependancies
+Clone the Git repository, create the python environment and install the python dependancies.
 
 ```bash
-# if aws cdk is not installed
-npm install -g aws-cdk
-cdk --version
-# if jq not installed
-brew install jq
-# if git not installed
-brew install git
 # clone the repo
 git clone https://github.com/fmcmac/elk-stack.git
-# go to directory
+# move to directory
 cd elk-stack
-# if pyenv is not installed
-brew install pyenv
 # check the python versions
 pyenv versions
-# need to have 3.7.5 for the aws cdk
-# if not present then install with
+# install python 3.7.5 if not present
 pyenv install 3.7.5
 # set the local version to 3.7.5
 pyenv local 3.7.5
+# create the venv
+python -m venv .env
 # download requirements
 python -m pip install -r requirements.txt
 ```
