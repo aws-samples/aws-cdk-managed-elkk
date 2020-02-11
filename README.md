@@ -5,11 +5,11 @@ Because: Filebeat > Kafka > Logstash > ElasticSearch > Kibana
 
 ## Prerequisites
 
-AWS CDK - https://docs.aws.amazon.com/cdk/index.html
-AWS CLI - https://aws.amazon.com/cli/
-Git -  https://git-scm.com/downloads
-python (3.6 or later) - https://www.python.org/downloads/ 
-jq - https://stedolan.github.io/jq/download/
+AWS CDK - https://docs.aws.amazon.com/cdk/index.html  
+AWS CLI - https://aws.amazon.com/cli/  
+Git -  https://git-scm.com/downloads  
+python (3.6 or later) - https://www.python.org/downloads/  
+jq - https://stedolan.github.io/jq/download/  
 
 ### Set up the Environment
 
