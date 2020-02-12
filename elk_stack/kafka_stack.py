@@ -56,6 +56,7 @@ class KafkaStack(core.Stack):
                 "$elk_topic": ELK_TOPIC,
                 "$kafka_download_version": ELK_KAFKA_DOWNLOAD_VERSION,
                 "$kafka_version": ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1],
+                "$elk_region": ELK_REGION,
             },
         )
         kafka_sh = assets.Asset(self, "kafka_sh", path=kafka_sh_asset)

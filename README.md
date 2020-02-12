@@ -223,7 +223,7 @@ Connect to the Elastic Instance using a terminal window:
 
 ```bash
 # get the elastic instance public dns
-elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --query "Reservations[*].Instances[*].{Instance:PublicDnsName}" --output json | jq -r '.[0][0].Instance'` && echo $elastic_dns
+elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --output json --query "Reservations[*].Instances[*].{Instance:PublicDnsName}" | jq -r '.[0][0].Instance'` && echo $elastic_dns
 # use the public dns to connect to the elastic instance
 ssh ec2-user@$elastic_dns
 ```

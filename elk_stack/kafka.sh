@@ -8,6 +8,8 @@ yum update -y
 yum install jq -y
 # update java
 yum install java-1.8.0 -y
+# set elk_region region as env variable
+echo "export AWS_DEFAULT_REGION=$elk_region" >> /etc/profile
 
 # install kakfa
 wget https://www-us.apache.org/dist/kafka/$kafka_version/$kafka_download_version.tgz
