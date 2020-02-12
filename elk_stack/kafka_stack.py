@@ -167,6 +167,9 @@ class KafkaStack(core.Stack):
             # add access to the file asset
             kafka_sh.grant_read(kafka_client_instance)
 
+            # add creation policy for instance
+            # core.CfnCreationPolicy(count=1, resource_signal="PT10M")
+
     # properties
     @property
     def get_kafka_client_security_group(self):

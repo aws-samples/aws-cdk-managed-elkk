@@ -15,6 +15,7 @@ from elk_stack.constants import (
     ELK_KEY_PAIR,
     ELK_FILEBEAT_INSTANCE,
     ELK_TOPIC,
+    ELK_REGION,
 )
 
 dirname = os.path.dirname(__file__)
@@ -27,10 +28,12 @@ class FilebeatStack(core.Stack):
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # assets for filebeat
-        filebeat_sh = assets.Asset(
-            self, "filebeat_sh", path=os.path.join(dirname, "filebeat.sh")
+        # update filebeat.sh to .asset
+        filebeat_sh_asset = file_updated(
+            os.path.join(dirname, "filebeat.sh"), {"$elk_region": ELK_REGION},
         )
+        # assets for filebeat
+        filebeat_sh = assets.Asset(self, "filebeat_sh", path=filebeat_sh_asset)
 
         # get kakfa brokers
         kafkaclient = boto3.client("kafka")

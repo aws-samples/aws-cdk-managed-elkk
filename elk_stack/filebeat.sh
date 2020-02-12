@@ -8,6 +8,8 @@ yum update -y
 yum install jq -y
 # need git to install log generator
 yum install git -y
+# set elk_region region as env variable
+echo "export AWS_DEFAULT_REGION=$elk_region" >> /etc/profile
 
 # get log generator
 git clone https://github.com/kiritbasu/Fake-Apache-Log-Generator.git /home/ec2-user/Fake-Apache-Log-Generator
