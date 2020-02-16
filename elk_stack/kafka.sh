@@ -4,8 +4,6 @@
 echo Running setup script
 # update packages
 yum update -y
-# jq to process json from bash
-yum install jq -y
 # update java
 yum install java-1.8.0 -y
 # set elk_region region as env variable

@@ -34,6 +34,16 @@ class FilebeatStack(core.Stack):
         )
         # assets for filebeat
         filebeat_sh = assets.Asset(self, "filebeat_sh", path=filebeat_sh_asset)
+        # log generator asset
+        log_generator_py = assets.Asset(
+            self, "log_generator", path=os.path.join(dirname, "log_generator.py")
+        )
+        # log generator requirements.txt asset
+        log_generator_requirements_txt = assets.Asset(
+            self,
+            "log_generator_requirements_txt",
+            path=os.path.join(dirname, "log_generator_requirements.txt"),
+        )
 
         # get kakfa brokers
         kafkaclient = boto3.client("kafka")
@@ -67,6 +77,8 @@ class FilebeatStack(core.Stack):
             f"""aws s3 cp s3://{filebeat_sh.s3_bucket_name}/{filebeat_sh.s3_object_key} /home/ec2-user/filebeat.sh""",
             f"""aws s3 cp s3://{filebeat_yml.s3_bucket_name}/{filebeat_yml.s3_object_key} /home/ec2-user/filebeat.yml""",
             f"""aws s3 cp s3://{elastic_repo.s3_bucket_name}/{elastic_repo.s3_object_key} /home/ec2-user/elastic.repo""",
+            f"""aws s3 cp s3://{log_generator_py.s3_bucket_name}/{log_generator_py.s3_object_key} /home/ec2-user/log_generator.py""",
+            f"""aws s3 cp s3://{log_generator_requirements_txt.s3_bucket_name}/{log_generator_requirements_txt.s3_object_key} /home/ec2-user/requirements.txt""",
             # make script executable
             "chmod +x /home/ec2-user/filebeat.sh",
             # run setup script

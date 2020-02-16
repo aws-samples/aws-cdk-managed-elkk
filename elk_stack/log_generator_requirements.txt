@@ -1,4 +1,2 @@
-fake-factory
 Faker
-pytz
 tzlocal

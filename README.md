@@ -12,7 +12,8 @@ AWS CDK - https://docs.aws.amazon.com/cdk/index.html
 AWS CLI - https://aws.amazon.com/cli/  
 Git -  https://git-scm.com/downloads  
 python (3.6 or later) - https://www.python.org/downloads/  
-jq - https://stedolan.github.io/jq/download/  
+Git Bash for Windows - https://gitforwindows.org/ (windows only)
+
 
 ### Set up the Environment
 
@@ -223,7 +224,7 @@ Connect to the Elastic Instance using a terminal window:
 
 ```bash
 # get the elastic instance public dns
-elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --output json --query "Reservations[*].Instances[*].{Instance:PublicDnsName}" | jq -r '.[0][0].Instance'` && echo $elastic_dns
+elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
 # use the public dns to connect to the elastic instance
 ssh ec2-user@$elastic_dns
 ```
@@ -232,9 +233,9 @@ While connected to the Elastic Instance:
 
 ```bash
 # get the elastic domain
-elastic_domain=`aws es list-domain-names --region us-east-1 | jq '.DomainNames[0].DomainName' -r` && echo $elastic_domain
+elastic_domain=`aws es list-domain-names --region us-east-1 --output text --query '*'` && echo $elastic_domain
 # get the elastic endpoint
-elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 | jq -r '.DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
+elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # curl a doc into elasticsearch
 curl -XPOST $elastic_endpoint/elkstack-test/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
 # curl to query elasticsearch
@@ -249,11 +250,11 @@ Create an SSH tunnel to Kibana.
 
 ```bash
 # get the elastic instance public dns
-elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --query "Reservations[*].Instances[*].{Instance:PublicDnsName}" --output json | jq -r '.[0][0].Instance'` && echo $elastic_dns
+elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
 # get the elastic domain
-elastic_domain=`aws es list-domain-names --region us-east-1 | jq '.DomainNames[0].DomainName' -r` && echo $elastic_domain
+elastic_domain=`aws es list-domain-names --region us-east-1 --output text --query '*'` && echo $elastic_domain
 # get the elastic endpoint
-elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 | jq -r '.DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
+elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # create the tunnel
 ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443
 ```
@@ -289,7 +290,7 @@ Connect to the Logstash Instance using a terminal window:
 
 ```bash
 # get the logstash instance public dns
-logstash_dns=`aws ec2 describe-instances --filter file://logstash_filter.json --query "Reservations[*].Instances[*].{Instance:PublicDnsName}" --output json | jq -r '.[0][0].Instance'` && echo $logstash_dns
+logstash_dns=`aws ec2 describe-instances --filter file://logstash_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $logstash_dns
 # use the public dns to connect to the logstash instance
 ssh ec2-user@$logstash_dns
 ```
