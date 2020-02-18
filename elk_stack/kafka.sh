@@ -24,5 +24,8 @@ mv -f /home/ec2-user/client.properties /opt/$kafka_download_version/bin/client.p
 # update the certs file into correct location
 cp /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.222.b10-0.amzn2.0.1.x86_64/jre/lib/security/cacerts /tmp/kafka.client.truststore.jks
 
+# signal build is done
+/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource PrivateInstance --region ${AWS::Region}
+
 # complete
 echo Complete setup script

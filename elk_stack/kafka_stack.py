@@ -168,7 +168,9 @@ class KafkaStack(core.Stack):
             kafka_sh.grant_read(kafka_client_instance)
 
             # add creation policy for instance
-            # core.CfnCreationPolicy(count=1, resource_signal="PT10M")
+            # kafka_client_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
+            #     resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+            # )
 
     # properties
     @property

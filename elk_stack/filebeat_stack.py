@@ -68,23 +68,7 @@ class FilebeatStack(core.Stack):
         elastic_repo = assets.Asset(
             self, "elastic_repo", path=os.path.join(dirname, "elastic.repo")
         )
-
-        # userdata for filebeat
-        fb_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
-        fb_userdata.add_commands(
-            "set -e",
-            # get setup assets files
-            f"""aws s3 cp s3://{filebeat_sh.s3_bucket_name}/{filebeat_sh.s3_object_key} /home/ec2-user/filebeat.sh""",
-            f"""aws s3 cp s3://{filebeat_yml.s3_bucket_name}/{filebeat_yml.s3_object_key} /home/ec2-user/filebeat.yml""",
-            f"""aws s3 cp s3://{elastic_repo.s3_bucket_name}/{elastic_repo.s3_object_key} /home/ec2-user/elastic.repo""",
-            f"""aws s3 cp s3://{log_generator_py.s3_bucket_name}/{log_generator_py.s3_object_key} /home/ec2-user/log_generator.py""",
-            f"""aws s3 cp s3://{log_generator_requirements_txt.s3_bucket_name}/{log_generator_requirements_txt.s3_object_key} /home/ec2-user/requirements.txt""",
-            # make script executable
-            "chmod +x /home/ec2-user/filebeat.sh",
-            # run setup script
-            ". /home/ec2-user/filebeat.sh",
-        )
-
+        
         # instance for filebeat
         fb_instance = ec2.Instance(
             self,
@@ -95,7 +79,7 @@ class FilebeatStack(core.Stack):
             ),
             vpc=vpc_stack.get_vpc,
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
-            user_data=fb_userdata,
+            #user_data=fb_userdata,
             key_name=ELK_KEY_PAIR,
             security_group=kafka_stack.get_kafka_client_security_group,
         )
@@ -110,3 +94,26 @@ class FilebeatStack(core.Stack):
         fb_instance.add_to_role_policy(statement=access_kafka_policy)
         # add access to the file asset
         filebeat_sh.grant_read(fb_instance)
+        # userdata for filebeat
+        fb_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+        fb_userdata.add_commands(
+            "set -e",
+            # get setup assets files
+            f"""aws s3 cp s3://{filebeat_sh.s3_bucket_name}/{filebeat_sh.s3_object_key} /home/ec2-user/filebeat.sh""",
+            f"""aws s3 cp s3://{filebeat_yml.s3_bucket_name}/{filebeat_yml.s3_object_key} /home/ec2-user/filebeat.yml""",
+            f"""aws s3 cp s3://{elastic_repo.s3_bucket_name}/{elastic_repo.s3_object_key} /home/ec2-user/elastic.repo""",
+            f"""aws s3 cp s3://{log_generator_py.s3_bucket_name}/{log_generator_py.s3_object_key} /home/ec2-user/log_generator.py""",
+            f"""aws s3 cp s3://{log_generator_requirements_txt.s3_bucket_name}/{log_generator_requirements_txt.s3_object_key} /home/ec2-user/requirements.txt""",
+            # make script executable
+            "chmod +x /home/ec2-user/filebeat.sh",
+            # run setup script
+            ". /home/ec2-user/filebeat.sh",
+            # send the cfn signal
+            f"""/opt/aws/bin/cfn-signal --resource {fb_instance} --stack {core.Aws.STACK_NAME}"""
+        )
+        # attach the userdata
+        fb_instance.add_user_data(fb_userdata.render())
+        # add creation policy for instance
+        fb_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
+            resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+        )

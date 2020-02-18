@@ -5,6 +5,7 @@ echo Running setup script
 # update packages
 yum update -y
 # set elk_region region as env variable
+# export AWS_DEFAULT_REGION=$elk_region
 echo "export AWS_DEFAULT_REGION=$elk_region" >> /etc/profile
 # get python3
 yum install python3 -y
