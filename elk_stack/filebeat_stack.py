@@ -109,7 +109,7 @@ class FilebeatStack(core.Stack):
             # run setup script
             ". /home/ec2-user/filebeat.sh",
             # send the cfn signal
-            f"""/opt/aws/bin/cfn-signal --resource {fb_instance} --stack {core.Aws.STACK_NAME}"""
+            f"""/opt/aws/bin/cfn-signal --resource {fb_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}"""
         )
         # attach the userdata
         fb_instance.add_user_data(fb_userdata.render())

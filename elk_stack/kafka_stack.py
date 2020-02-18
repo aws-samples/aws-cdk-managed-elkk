@@ -49,17 +49,17 @@ class KafkaStack(core.Stack):
         except IndexError:
             kafka_zookeeper = ""
         # update kafka.sh to .asset
-        kafka_sh_asset = file_updated(
-            os.path.join(dirname, "kafka.sh"),
-            {
-                "$kafka_zookeeper": kafka_zookeeper,
-                "$elk_topic": ELK_TOPIC,
-                "$kafka_download_version": ELK_KAFKA_DOWNLOAD_VERSION,
-                "$kafka_version": ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1],
-                "$elk_region": ELK_REGION,
-            },
-        )
-        kafka_sh = assets.Asset(self, "kafka_sh", path=kafka_sh_asset)
+        # kafka_sh_asset = file_updated(
+        #     os.path.join(dirname, "kafka.sh"),
+        #     {
+        #         "$kafka_zookeeper": kafka_zookeeper,
+        #         "$elk_topic": ELK_TOPIC,
+        #         "$kafka_download_version": ELK_KAFKA_DOWNLOAD_VERSION,
+        #         "$kafka_version": ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1],
+        #         "$elk_region": ELK_REGION,
+        #    },
+        # )
+        # kafka_sh = assets.Asset(self, "kafka_sh", path=kafka_sh_asset)
         client_properties = assets.Asset(
             self, "client_properties", path=os.path.join(dirname, "client.properties")
         )
@@ -125,19 +125,6 @@ class KafkaStack(core.Stack):
         )
         core.Tag.add(self.kafka_cluster, "project", ELK_PROJECT_TAG)
 
-        # userdata for kafka client
-        kafka_client_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
-        kafka_client_userdata.add_commands(
-            "set -e",
-            # get setup assets files
-            f"""aws s3 cp s3://{kafka_sh.s3_bucket_name}/{kafka_sh.s3_object_key} /home/ec2-user/kafka.sh""",
-            f"""aws s3 cp s3://{client_properties.s3_bucket_name}/{client_properties.s3_object_key} /home/ec2-user/client.properties""",
-            # make script executable
-            "chmod +x /home/ec2-user/kafka.sh",
-            # run setup script
-            ". /home/ec2-user/kafka.sh",
-        )
-
         # instance for kafka client
         if client == True:
             kafka_client_instance = ec2.Instance(
@@ -149,7 +136,6 @@ class KafkaStack(core.Stack):
                 ),
                 vpc=vpc_stack.get_vpc,
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
-                user_data=kafka_client_userdata,
                 key_name=ELK_KEY_PAIR,
                 security_group=self.kafka_client_security_group,
             )
@@ -165,18 +151,42 @@ class KafkaStack(core.Stack):
             # add the role permissions
             kafka_client_instance.add_to_role_policy(statement=access_kafka_policy)
             # add access to the file asset
-            kafka_sh.grant_read(kafka_client_instance)
-
+            client_properties.grant_read(kafka_client_instance)
+            # userdata for kafka client
+            kafka_client_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+            kafka_client_userdata.add_commands(
+                "set -e",
+                # get setup assets files
+                # f"""aws s3 cp s3://{kafka_sh.s3_bucket_name}/{kafka_sh.s3_object_key} /home/ec2-user/kafka.sh""",
+                f"""aws s3 cp s3://{client_properties.s3_bucket_name}/{client_properties.s3_object_key} /home/ec2-user/client.properties""",
+                # update packages
+                f"""yum update -y""",
+                # update java
+                f"""yum install java-1.8.0 -y""",
+                # set elk_region region as env variable
+                f"""echo "export AWS_DEFAULT_REGION={ELK_REGION}" >> /etc/profile""",
+                # install kakfa
+                f"""wget https://www-us.apache.org/dist/kafka/{ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1]}/{ELK_KAFKA_DOWNLOAD_VERSION}.tgz""",
+                f"""tar -xvf {ELK_KAFKA_DOWNLOAD_VERSION}.tgz""",
+                f"""mv {ELK_KAFKA_DOWNLOAD_VERSION} /opt""",
+                f"""rm {ELK_KAFKA_DOWNLOAD_VERSION}.tgz""",
+                # move client.properties to correct location
+                f"""mv -f /home/ec2-user/client.properties /opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/client.properties""",
+                # create the topic
+                f"""/opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/kafka-topics.sh --create --zookeeper {kafka_zookeeper} --replication-factor 3 --partitions 1 --topic {ELK_TOPIC}""",
+                # update the certs file into correct location
+                """cp /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.222.b10-0.amzn2.0.1.x86_64/jre/lib/security/cacerts /tmp/kafka.client.truststore.jks""",
+                # signal build is done
+                f"""/opt/aws/bin/cfn-signal --resource {kafka_client_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}""",
+            )
+            # attach the userdata
+            kafka_client_instance.add_user_data(kafka_client_userdata.render())
             # add creation policy for instance
-            # kafka_client_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
-            #     resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
-            # )
+            kafka_client_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
+                resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+            )
 
     # properties
     @property
     def get_kafka_client_security_group(self):
         return self.kafka_client_security_group
-
-    @property
-    def get_kafka_security_group(self):
-        return self.kafka_security_group
