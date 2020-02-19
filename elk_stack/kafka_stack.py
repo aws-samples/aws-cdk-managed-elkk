@@ -48,18 +48,8 @@ class KafkaStack(core.Stack):
             ]["ZookeeperConnectString"]
         except IndexError:
             kafka_zookeeper = ""
-        # update kafka.sh to .asset
-        # kafka_sh_asset = file_updated(
-        #     os.path.join(dirname, "kafka.sh"),
-        #     {
-        #         "$kafka_zookeeper": kafka_zookeeper,
-        #         "$elk_topic": ELK_TOPIC,
-        #         "$kafka_download_version": ELK_KAFKA_DOWNLOAD_VERSION,
-        #         "$kafka_version": ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1],
-        #         "$elk_region": ELK_REGION,
-        #    },
-        # )
-        # kafka_sh = assets.Asset(self, "kafka_sh", path=kafka_sh_asset)
+
+        # create assets
         client_properties = assets.Asset(
             self, "client_properties", path=os.path.join(dirname, "client.properties")
         )
@@ -157,27 +147,29 @@ class KafkaStack(core.Stack):
             kafka_client_userdata.add_commands(
                 "set -e",
                 # get setup assets files
-                # f"""aws s3 cp s3://{kafka_sh.s3_bucket_name}/{kafka_sh.s3_object_key} /home/ec2-user/kafka.sh""",
-                f"""aws s3 cp s3://{client_properties.s3_bucket_name}/{client_properties.s3_object_key} /home/ec2-user/client.properties""",
+                f"aws s3 cp s3://{client_properties.s3_bucket_name}/{client_properties.s3_object_key} /home/ec2-user/client.properties",
                 # update packages
-                f"""yum update -y""",
-                # update java
-                f"""yum install java-1.8.0 -y""",
-                # set elk_region region as env variable
-                f"""echo "export AWS_DEFAULT_REGION={ELK_REGION}" >> /etc/profile""",
-                # install kakfa
-                f"""wget https://www-us.apache.org/dist/kafka/{ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1]}/{ELK_KAFKA_DOWNLOAD_VERSION}.tgz""",
-                f"""tar -xvf {ELK_KAFKA_DOWNLOAD_VERSION}.tgz""",
-                f"""mv {ELK_KAFKA_DOWNLOAD_VERSION} /opt""",
-                f"""rm {ELK_KAFKA_DOWNLOAD_VERSION}.tgz""",
-                # move client.properties to correct location
-                f"""mv -f /home/ec2-user/client.properties /opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/client.properties""",
-                # create the topic
-                f"""/opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/kafka-topics.sh --create --zookeeper {kafka_zookeeper} --replication-factor 3 --partitions 1 --topic {ELK_TOPIC}""",
-                # update the certs file into correct location
-                """cp /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.222.b10-0.amzn2.0.1.x86_64/jre/lib/security/cacerts /tmp/kafka.client.truststore.jks""",
+                "yum update -y",
                 # signal build is done
-                f"""/opt/aws/bin/cfn-signal --resource {kafka_client_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}""",
+                f"/opt/aws/bin/cfn-signal --resource {kafka_client_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
+                # update java
+                "yum install java-1.8.0 -y",
+                # set elk_region region as env variable
+                f'echo "export AWS_DEFAULT_REGION={ELK_REGION}" >> /etc/profile',
+                # install kakfa
+                f'wget https://www-us.apache.org/dist/kafka/{ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1]}/{ELK_KAFKA_DOWNLOAD_VERSION}.tgz',
+                f"tar -xvf {ELK_KAFKA_DOWNLOAD_VERSION}.tgz",
+                f"mv {ELK_KAFKA_DOWNLOAD_VERSION} /opt",
+                f"rm {ELK_KAFKA_DOWNLOAD_VERSION}.tgz",
+                # move client.properties to correct location
+                f"mv -f /home/ec2-user/client.properties /opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/client.properties",
+                # create the topic, if already exists capture error message
+                f"make_topic=`/opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/kafka-topics.sh --create --zookeeper {kafka_zookeeper} --replication-factor 3 --partitions 1 --topic {ELK_TOPIC} 2>&1`",
+                "echo $make_topic",
+                # update the certs file into correct location
+                "cp /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.222.b10-0.amzn2.0.1.x86_64/jre/lib/security/cacerts /tmp/kafka.client.truststore.jks",
+                # signal build is done
+                f"/opt/aws/bin/cfn-signal --resource {kafka_client_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
             )
             # attach the userdata
             kafka_client_instance.add_user_data(kafka_client_userdata.render())

@@ -89,7 +89,6 @@ class LogstashStack(core.Stack):
         )
         logstash_conf = assets.Asset(self, "logstash.conf", path=logstash_conf_asset,)
 
-
         # logstash security group
         logstash_security_group = ec2.SecurityGroup(
             self,
@@ -190,47 +189,42 @@ class LogstashStack(core.Stack):
         logstash_userdata.add_commands(
             "set -e",
             # get setup assets files
-            # f"""aws s3 cp s3://{logstash_sh.s3_bucket_name}/{logstash_sh.s3_object_key} /home/ec2-user/logstash.sh""",
-            f"""aws s3 cp s3://{logstash_yml.s3_bucket_name}/{logstash_yml.s3_object_key} /home/ec2-user/logstash.yml""",
-            f"""aws s3 cp s3://{logstash_repo.s3_bucket_name}/{logstash_repo.s3_object_key} /home/ec2-user/logstash.repo""",
-            f"""aws s3 cp s3://{logstash_conf.s3_bucket_name}/{logstash_conf.s3_object_key} /home/ec2-user/logstash.conf""",
+            f"aws s3 cp s3://{logstash_yml.s3_bucket_name}/{logstash_yml.s3_object_key} /home/ec2-user/logstash.yml",
+            f"aws s3 cp s3://{logstash_repo.s3_bucket_name}/{logstash_repo.s3_object_key} /home/ec2-user/logstash.repo",
+            f"aws s3 cp s3://{logstash_conf.s3_bucket_name}/{logstash_conf.s3_object_key} /home/ec2-user/logstash.conf",
             # update packages
-            """yum update -y""",
+            "yum update -y",
             # install java
-            """amazon-linux-extras install java-openjdk11 -y""",
+            "amazon-linux-extras install java-openjdk11 -y",
             # install git
-            """yum install git -y""",
+            "yum install git -y",
             # install supervisord
-            """yum install python-pip -y""",
+            "yum install python-pip -y",
             # get elastic output to es
-            """git clone https://github.com/awslabs/logstash-output-amazon_es.git /home/ec2-user/logstash-output-amazon_es""",
+            "git clone https://github.com/awslabs/logstash-output-amazon_es.git /home/ec2-user/logstash-output-amazon_es",
             # logstash
-            """rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch""",
+            "rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch",
             # move logstash repo file
-            """mv -f /home/ec2-user/logstash.repo /etc/yum.repos.d/logstash.repo""",
+            "mv -f /home/ec2-user/logstash.repo /etc/yum.repos.d/logstash.repo",
             # get to the yum
-            """yum install logstash -y""",
+            "yum install logstash -y",
             # add user to logstash group
-            """usermod -a -G logstash ec2-user""",
+            "usermod -a -G logstash ec2-user",
             # move logstash.yml to final location
-            """mv -f /home/ec2-user/logstash.yml /etc/logstash/logstash.yml""",
+            "mv -f /home/ec2-user/logstash.yml /etc/logstash/logstash.yml",
             # move logstash.conf to final location
-            """mv -f /home/ec2-user/logstash.conf /etc/logstash/conf.d/logstash.conf""",
-            # move plugin 
-            """mkdir /usr/share/logstash/plugins""",
-            """mv -f /home/ec2-user/logstash-output-amazon_es /usr/share/logstash/plugins/logstash-output-amazon_es""",
+            "mv -f /home/ec2-user/logstash.conf /etc/logstash/conf.d/logstash.conf",
+            # move plugin
+            "mkdir /usr/share/logstash/plugins",
+            "mv -f /home/ec2-user/logstash-output-amazon_es /usr/share/logstash/plugins/logstash-output-amazon_es",
             # update gemfile
             """sed -i '5igem "logstash-output-amazon_es", :path => "/usr/share/logstash/plugins/logstash-output-amazon_es"' /usr/share/logstash/Gemfile""",
             # update ownership
-            """chown -R logstash:logstash /etc/logstash""",
+            "chown -R logstash:logstash /etc/logstash",
             # start logstash
-            """systemctl start logstash.service""",
-            # make script executable
-            # "chmod +x /home/ec2-user/logstash.sh",
-            # run setup script
-            # ". /home/ec2-user/logstash.sh",
+            "systemctl start logstash.service",
             # send the cfn signal
-            f"""/opt/aws/bin/cfn-signal --resource {logstash_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}"""
+            f"/opt/aws/bin/cfn-signal --resource {logstash_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
         )
         # attach the userdata
         logstash_instance.add_user_data(logstash_userdata.render())

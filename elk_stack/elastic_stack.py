@@ -15,7 +15,7 @@ from elk_stack.constants import (
     ELK_ELASTIC_MASTER_INSTANCE,
     ELK_ELASTIC_INSTANCE_COUNT,
     ELK_ELASTIC_INSTANCE,
-    ELK_ELASTIC_VERSION
+    ELK_ELASTIC_VERSION,
 )
 import urllib.request
 
@@ -70,13 +70,15 @@ class ElasticStack(core.Stack):
         core.Tag.add(elastic_security_group, "project", ELK_PROJECT_TAG)
         core.Tag.add(elastic_security_group, "Name", "elastic_sg")
 
-        # ingress for elastic from self 
+        # ingress for elastic from self
         elastic_security_group.connections.allow_from(
             elastic_security_group, ec2.Port.all_traffic(), "within elastic",
         )
         # ingress for elastic from elastic client
         elastic_security_group.connections.allow_from(
-            elastic_client_security_group, ec2.Port.all_traffic(), "from elastic client",
+            elastic_client_security_group,
+            ec2.Port.all_traffic(),
+            "from elastic client",
         )
         # ingress for elastic client from elastic
         elastic_client_security_group.connections.allow_from(
@@ -108,7 +110,7 @@ class ElasticStack(core.Stack):
             ebs_options={"ebsEnabled": True, "volumeSize": 10},
             vpc_options={
                 "securityGroupIds": [elastic_security_group.security_group_id],
-                "subnetIds": vpc_stack.get_vpc_private_subnet_ids
+                "subnetIds": vpc_stack.get_vpc_private_subnet_ids,
             },
             access_policies=elastic_document,
         )
@@ -131,8 +133,6 @@ class ElasticStack(core.Stack):
             core.Tag.add(elastic_instance, "project", ELK_PROJECT_TAG)
             # needs kafka cluster to be available
             elastic_instance.node.add_dependency(elastic_domain)
-            # add access to the file asset
-            # elastic_sh.grant_read(elastic_instance)
             # create policies for ec2 to connect to kafka
             access_elastic_policy = iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
@@ -149,12 +149,10 @@ class ElasticStack(core.Stack):
             elastic_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
             elastic_userdata.add_commands(
                 "set -e",
-                # get setup assets files
-                # f"""aws s3 cp s3://{elastic_sh.s3_bucket_name}/{elastic_sh.s3_object_key} /home/ec2-user/elastic.sh""",
                 # update packages
-                """yum update -y""",
+                "yum update -y",
                 # send the cfn signal
-                f"""/opt/aws/bin/cfn-signal --resource {elastic_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}"""
+                f"/opt/aws/bin/cfn-signal --resource {elastic_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
             )
             elastic_instance.add_user_data(elastic_userdata.render())
             # add creation policy for instance

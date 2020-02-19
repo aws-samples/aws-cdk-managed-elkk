@@ -68,7 +68,7 @@ class FilebeatStack(core.Stack):
         elastic_repo = assets.Asset(
             self, "elastic_repo", path=os.path.join(dirname, "elastic.repo")
         )
-        
+
         # instance for filebeat
         fb_instance = ec2.Instance(
             self,
@@ -79,7 +79,7 @@ class FilebeatStack(core.Stack):
             ),
             vpc=vpc_stack.get_vpc,
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
-            #user_data=fb_userdata,
+            # user_data=fb_userdata,
             key_name=ELK_KEY_PAIR,
             security_group=kafka_stack.get_kafka_client_security_group,
         )
@@ -99,17 +99,37 @@ class FilebeatStack(core.Stack):
         fb_userdata.add_commands(
             "set -e",
             # get setup assets files
-            f"""aws s3 cp s3://{filebeat_sh.s3_bucket_name}/{filebeat_sh.s3_object_key} /home/ec2-user/filebeat.sh""",
-            f"""aws s3 cp s3://{filebeat_yml.s3_bucket_name}/{filebeat_yml.s3_object_key} /home/ec2-user/filebeat.yml""",
-            f"""aws s3 cp s3://{elastic_repo.s3_bucket_name}/{elastic_repo.s3_object_key} /home/ec2-user/elastic.repo""",
-            f"""aws s3 cp s3://{log_generator_py.s3_bucket_name}/{log_generator_py.s3_object_key} /home/ec2-user/log_generator.py""",
-            f"""aws s3 cp s3://{log_generator_requirements_txt.s3_bucket_name}/{log_generator_requirements_txt.s3_object_key} /home/ec2-user/requirements.txt""",
-            # make script executable
-            "chmod +x /home/ec2-user/filebeat.sh",
-            # run setup script
-            ". /home/ec2-user/filebeat.sh",
+            f"aws s3 cp s3://{filebeat_yml.s3_bucket_name}/{filebeat_yml.s3_object_key} /home/ec2-user/filebeat.yml",
+            f"aws s3 cp s3://{elastic_repo.s3_bucket_name}/{elastic_repo.s3_object_key} /home/ec2-user/elastic.repo",
+            f"aws s3 cp s3://{log_generator_py.s3_bucket_name}/{log_generator_py.s3_object_key} /home/ec2-user/log_generator.py",
+            f"aws s3 cp s3://{log_generator_requirements_txt.s3_bucket_name}/{log_generator_requirements_txt.s3_object_key} /home/ec2-user/requirements.txt",
+            # update packages
+            "yum update -y",
+            # set elk_region region as env variable
+            f'echo "export AWS_DEFAULT_REGION={ELK_REGION}" >> /etc/profile',
+            # get python3
+            "yum install python3 -y",
+            # get pip
+            "yum install python-pip -y",
+            # make log generator executable
+            "chmod +x /home/ec2-user/log_generator.py" 
+            # get log generator requirements
+            "python3 -m pip install -r /home/ec2-user/requirements.txt",
+            # filebeat
+            "rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch",
+            # move filebeat repo file
+            "mv -f /home/ec2-user/elastic.repo /etc/yum.repos.d/elastic.repo",
+            # install filebeat
+            "yum install filebeat -y",
+            # move filebeat.yml to final location
+            "mv -f /home/ec2-user/filebeat.yml /etc/filebeat/filebeat.yml",
+            # ownership
+            "chown -R ec2-user:ec2-user /home/ec2-user",
+            # start filebeat
+            "systemctl start filebeat",
+            "systemctl status filebeat",
             # send the cfn signal
-            f"""/opt/aws/bin/cfn-signal --resource {fb_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}"""
+            f"/opt/aws/bin/cfn-signal --resource {fb_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
         )
         # attach the userdata
         fb_instance.add_user_data(fb_userdata.render())
