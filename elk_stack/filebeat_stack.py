@@ -28,10 +28,6 @@ class FilebeatStack(core.Stack):
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # update filebeat.sh to .asset
-        filebeat_sh_asset = file_updated(
-            os.path.join(dirname, "filebeat.sh"), {"$elk_region": ELK_REGION},
-        )
         # assets for filebeat
         filebeat_sh = assets.Asset(self, "filebeat_sh", path=filebeat_sh_asset)
         # log generator asset

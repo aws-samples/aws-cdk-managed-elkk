@@ -66,10 +66,7 @@ class LogstashStack(core.Stack):
         except IndexError:
             kafka_brokers = ""
 
-        # assets for logstash
-        # logstash_sh = assets.Asset(
-        #     self, "logstash_sh", path=os.path.join(dirname, "logstash.sh")
-        # )
+        # assets for logstash stack
         logstash_yml = assets.Asset(
             self, "logstash_yml", path=os.path.join(dirname, "logstash.yml")
         )

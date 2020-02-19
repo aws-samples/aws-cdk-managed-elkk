@@ -35,11 +35,6 @@ class ElasticStack(core.Stack):
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # assets for elastic
-        # elastic_sh = assets.Asset(
-        #     self, "elastic_sh", path=os.path.join(dirname, "elastic.sh")
-        # )
-
         # security group for elastic client
         elastic_client_security_group = ec2.SecurityGroup(
             self,
