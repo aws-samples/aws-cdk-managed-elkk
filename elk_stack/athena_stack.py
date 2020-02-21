@@ -26,19 +26,17 @@ class AthenaStack(core.Stack):
             public_read_access=False,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy=core.RemovalPolicy.DESTROY,
+            lifecycle_rules=[s3.LifecycleRule(
+                # delete the files after 1800 days (5 years)
+                expiration=core.Duration.days(1800),
+                transitions=[
+                    # move files into glacier after 90 days
+                    s3.Transition(transition_after=core.Duration.days(90), storage_class=s3.StorageClass.GLACIER)
+                ],
+            )],
         )
         # tag the bucket
         core.Tag.add(self.s3_bucket, "project", ELK_PROJECT_TAG)
-
-        # load the sample data file into s3
-        # elkstack/2020/02/09/ls.s3.6b510ecb-d9dd-4877-bf3b-32c78b9bccc6.2020-02-09T10.26.part2.txt
-        s3_files = s3_deployment.BucketDeployment(
-            self,
-            "s3_files",
-            sources=[s3_deployment.Source.asset(os.path.join(dirname, "s3_files"))],
-            destination_bucket=self.s3_bucket,
-            destination_key_prefix=f"{ELK_TOPIC}/2020/02/09",
-        )
 
         # lambda policies
         s3_cleaner_policies = [
@@ -62,8 +60,6 @@ class AthenaStack(core.Stack):
         )
         # needs a dependancy
         s3_cleaner.node.add_dependency(self.s3_bucket)
-        # response from the custom resource
-        # print("s3_clenaner.response", s3_cleaner.response)
 
     # properties
     @property

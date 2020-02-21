@@ -6,7 +6,6 @@ from aws_cdk import (
     aws_ec2 as ec2,
     aws_s3_assets as assets,
     aws_iam as iam,
-    aws_cloudformation as cfn,
 )
 from elk_stack.constants import (
     ELK_PROJECT_TAG,
@@ -67,10 +66,7 @@ class LogstashStack(core.Stack):
         except IndexError:
             kafka_brokers = ""
 
-        # assets for logstash
-        logstash_sh = assets.Asset(
-            self, "logstash_sh", path=os.path.join(dirname, "logstash.sh")
-        )
+        # assets for logstash stack
         logstash_yml = assets.Asset(
             self, "logstash_yml", path=os.path.join(dirname, "logstash.yml")
         )
@@ -89,21 +85,6 @@ class LogstashStack(core.Stack):
             },
         )
         logstash_conf = assets.Asset(self, "logstash.conf", path=logstash_conf_asset,)
-
-        # userdata for logstash
-        logstash_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
-        logstash_userdata.add_commands(
-            "set -e",
-            # get setup assets files
-            f"""aws s3 cp s3://{logstash_sh.s3_bucket_name}/{logstash_sh.s3_object_key} /home/ec2-user/logstash.sh""",
-            f"""aws s3 cp s3://{logstash_yml.s3_bucket_name}/{logstash_yml.s3_object_key} /home/ec2-user/logstash.yml""",
-            f"""aws s3 cp s3://{logstash_repo.s3_bucket_name}/{logstash_repo.s3_object_key} /home/ec2-user/logstash.repo""",
-            f"""aws s3 cp s3://{logstash_conf.s3_bucket_name}/{logstash_conf.s3_object_key} /home/ec2-user/logstash.conf""",
-            # make script executable
-            "chmod +x /home/ec2-user/logstash.sh",
-            # run setup script
-            ". /home/ec2-user/logstash.sh",
-        )
 
         # logstash security group
         logstash_security_group = ec2.SecurityGroup(
@@ -125,31 +106,38 @@ class LogstashStack(core.Stack):
         security_groups = ec2client.describe_security_groups(
             Filters=[{"Name": "tag-value", "Values": [ELK_PROJECT_TAG,]},],
         )
-        kafka_sg_id = [
-            sg["GroupId"]
-            for sg in security_groups["SecurityGroups"]
-            if "kafka security group" in sg["Description"]
-        ][0]
-        kafka_security_group = ec2.SecurityGroup.from_security_group_id(
-            self, "kafka_security_group", security_group_id=kafka_sg_id
-        )
-        # let in logstash
-        kafka_security_group.connections.allow_from(
-            logstash_security_group, ec2.Port.all_traffic(), "from logstash",
-        )
+        # if kafka sg does not exist ... don't add it
+        try:
+            kafka_sg_id = [
+                sg["GroupId"]
+                for sg in security_groups["SecurityGroups"]
+                if "kafka security group" in sg["Description"]
+            ][0]
+            kafka_security_group = ec2.SecurityGroup.from_security_group_id(
+                self, "kafka_security_group", security_group_id=kafka_sg_id
+            )
+            # let in logstash
+            kafka_security_group.connections.allow_from(
+                logstash_security_group, ec2.Port.all_traffic(), "from logstash",
+            )
+        except IndexError:
+            print("kafka_sg_id and kafka_security_group not found")
         # get security group for elastic
-        elastic_sg_id = [
-            sg["GroupId"]
-            for sg in security_groups["SecurityGroups"]
-            if "elastic security group" in sg["Description"]
-        ][0]
-        elastic_security_group = ec2.SecurityGroup.from_security_group_id(
-            self, "elastic_security_group", security_group_id=elastic_sg_id
-        )
-        # let in logstash
-        elastic_security_group.connections.allow_from(
-            logstash_security_group, ec2.Port.all_traffic(), "from logstash",
-        )
+        try:
+            elastic_sg_id = [
+                sg["GroupId"]
+                for sg in security_groups["SecurityGroups"]
+                if "elastic security group" in sg["Description"]
+            ][0]
+            elastic_security_group = ec2.SecurityGroup.from_security_group_id(
+                self, "elastic_security_group", security_group_id=elastic_sg_id
+            )
+            # let in logstash
+            elastic_security_group.connections.allow_from(
+                logstash_security_group, ec2.Port.all_traffic(), "from logstash",
+            )
+        except IndexError:
+            pass
 
         # create the logstash instance
         logstash_instance = ec2.Instance(
@@ -161,13 +149,14 @@ class LogstashStack(core.Stack):
             ),
             vpc=vpc_stack.get_vpc,
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
-            user_data=logstash_userdata,
             key_name=ELK_KEY_PAIR,
             security_group=logstash_security_group,
         )
         core.Tag.add(logstash_instance, "project", ELK_PROJECT_TAG)
-        # add access to the file asset
-        logstash_sh.grant_read(logstash_instance)
+        # add access to the file assets
+        logstash_yml.grant_read(logstash_instance)
+        logstash_repo.grant_read(logstash_instance)
+        logstash_conf.grant_read(logstash_instance)
         # create policies for logstash
         access_elastic_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
@@ -192,3 +181,51 @@ class LogstashStack(core.Stack):
             effect=iam.Effect.ALLOW, actions=["s3:*",], resources=["*"],
         )
         logstash_instance.add_to_role_policy(statement=access_s3_policy)
+        # userdata for logstash
+        logstash_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+        logstash_userdata.add_commands(
+            "set -e",
+            # get setup assets files
+            f"aws s3 cp s3://{logstash_yml.s3_bucket_name}/{logstash_yml.s3_object_key} /home/ec2-user/logstash.yml",
+            f"aws s3 cp s3://{logstash_repo.s3_bucket_name}/{logstash_repo.s3_object_key} /home/ec2-user/logstash.repo",
+            f"aws s3 cp s3://{logstash_conf.s3_bucket_name}/{logstash_conf.s3_object_key} /home/ec2-user/logstash.conf",
+            # update packages
+            "yum update -y",
+            # install java
+            "amazon-linux-extras install java-openjdk11 -y",
+            # install git
+            "yum install git -y",
+            # install supervisord
+            "yum install python-pip -y",
+            # get elastic output to es
+            "git clone https://github.com/awslabs/logstash-output-amazon_es.git /home/ec2-user/logstash-output-amazon_es",
+            # logstash
+            "rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch",
+            # move logstash repo file
+            "mv -f /home/ec2-user/logstash.repo /etc/yum.repos.d/logstash.repo",
+            # get to the yum
+            "yum install logstash -y",
+            # add user to logstash group
+            "usermod -a -G logstash ec2-user",
+            # move logstash.yml to final location
+            "mv -f /home/ec2-user/logstash.yml /etc/logstash/logstash.yml",
+            # move logstash.conf to final location
+            "mv -f /home/ec2-user/logstash.conf /etc/logstash/conf.d/logstash.conf",
+            # move plugin
+            "mkdir /usr/share/logstash/plugins",
+            "mv -f /home/ec2-user/logstash-output-amazon_es /usr/share/logstash/plugins/logstash-output-amazon_es",
+            # update gemfile
+            """sed -i '5igem "logstash-output-amazon_es", :path => "/usr/share/logstash/plugins/logstash-output-amazon_es"' /usr/share/logstash/Gemfile""",
+            # update ownership
+            "chown -R logstash:logstash /etc/logstash",
+            # start logstash
+            "systemctl start logstash.service",
+            # send the cfn signal
+            f"/opt/aws/bin/cfn-signal --resource {logstash_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
+        )
+        # attach the userdata
+        logstash_instance.add_user_data(logstash_userdata.render())
+        # add creation policy for instance
+        logstash_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
+            resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+        )

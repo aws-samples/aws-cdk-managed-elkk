@@ -20,16 +20,21 @@ from elk_stack.constants import (
 dirname = os.path.dirname(__file__)
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
-
 class FilebeatStack(core.Stack):
     def __init__(
         self, scope: core.Construct, id: str, vpc_stack, kafka_stack, **kwargs
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # assets for filebeat
-        filebeat_sh = assets.Asset(
-            self, "filebeat_sh", path=os.path.join(dirname, "filebeat.sh")
+        # log generator asset
+        log_generator_py = assets.Asset(
+            self, "log_generator", path=os.path.join(dirname, "log_generator.py")
+        )
+        # log generator requirements.txt asset
+        log_generator_requirements_txt = assets.Asset(
+            self,
+            "log_generator_requirements_txt",
+            path=os.path.join(dirname, "log_generator_requirements.txt"),
         )
 
         # get kakfa brokers
@@ -56,20 +61,6 @@ class FilebeatStack(core.Stack):
             self, "elastic_repo", path=os.path.join(dirname, "elastic.repo")
         )
 
-        # userdata for filebeat
-        fb_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
-        fb_userdata.add_commands(
-            "set -e",
-            # get setup assets files
-            f"""aws s3 cp s3://{filebeat_sh.s3_bucket_name}/{filebeat_sh.s3_object_key} /home/ec2-user/filebeat.sh""",
-            f"""aws s3 cp s3://{filebeat_yml.s3_bucket_name}/{filebeat_yml.s3_object_key} /home/ec2-user/filebeat.yml""",
-            f"""aws s3 cp s3://{elastic_repo.s3_bucket_name}/{elastic_repo.s3_object_key} /home/ec2-user/elastic.repo""",
-            # make script executable
-            "chmod +x /home/ec2-user/filebeat.sh",
-            # run setup script
-            ". /home/ec2-user/filebeat.sh",
-        )
-
         # instance for filebeat
         fb_instance = ec2.Instance(
             self,
@@ -80,7 +71,6 @@ class FilebeatStack(core.Stack):
             ),
             vpc=vpc_stack.get_vpc,
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
-            user_data=fb_userdata,
             key_name=ELK_KEY_PAIR,
             security_group=kafka_stack.get_kafka_client_security_group,
         )
@@ -94,4 +84,48 @@ class FilebeatStack(core.Stack):
         # add the role permissions
         fb_instance.add_to_role_policy(statement=access_kafka_policy)
         # add access to the file asset
-        filebeat_sh.grant_read(fb_instance)
+        filebeat_yml.grant_read(fb_instance)
+        elastic_repo.grant_read(fb_instance)
+        log_generator_py.grant_read(fb_instance)
+        log_generator_requirements_txt.grant_read(fb_instance)
+        # userdata for filebeat
+        fb_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+        fb_userdata.add_commands(
+            # get setup assets files
+            f"aws s3 cp s3://{filebeat_yml.s3_bucket_name}/{filebeat_yml.s3_object_key} /home/ec2-user/filebeat.yml",
+            f"aws s3 cp s3://{elastic_repo.s3_bucket_name}/{elastic_repo.s3_object_key} /home/ec2-user/elastic.repo",
+            f"aws s3 cp s3://{log_generator_py.s3_bucket_name}/{log_generator_py.s3_object_key} /home/ec2-user/log_generator.py",
+            f"aws s3 cp s3://{log_generator_requirements_txt.s3_bucket_name}/{log_generator_requirements_txt.s3_object_key} /home/ec2-user/requirements.txt",
+            # update packages
+            "yum update -y",
+            # set region region as env variable
+            f'echo "export AWS_DEFAULT_REGION={core.Aws.REGION}" >> /etc/profile',
+            # get python3
+            "yum install python3 -y",
+            # get pip
+            "yum install python-pip -y",
+            # make log generator executable
+            "chmod +x /home/ec2-user/log_generator.py",
+            # get log generator requirements
+            "python3 -m pip install -r /home/ec2-user/requirements.txt",
+            # filebeat
+            "rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch",
+            # move filebeat repo file
+            "mv -f /home/ec2-user/elastic.repo /etc/yum.repos.d/elastic.repo",
+            # install filebeat
+            "yum install filebeat -y",
+            # move filebeat.yml to final location
+            "mv -f /home/ec2-user/filebeat.yml /etc/filebeat/filebeat.yml",
+            # update log generator ownership
+            "chown -R ec2-user:ec2-user /home/ec2-user",
+            # start filebeat
+            "systemctl start filebeat",
+            # send the cfn signal
+            f"/opt/aws/bin/cfn-signal --resource {fb_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
+        )
+        # attach the userdata
+        fb_instance.add_user_data(fb_userdata.render())
+        # add creation policy for instance
+        fb_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
+            resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+        )
