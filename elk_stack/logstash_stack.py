@@ -249,6 +249,7 @@ class LogstashStack(core.Stack):
             logstash_cluster = ecs.Cluster(
                 self, "logstash_cluster", vpc=vpc_stack.get_vpc
             )
+            core.Tag.add(logstash_cluster, "project", ELK_PROJECT_TAG)
 
             logstash_service = ecs_patterns.ApplicationLoadBalancedFargateService(
                 self,
@@ -264,4 +265,5 @@ class LogstashStack(core.Stack):
                 memory_limit_mib=2048,  # Default is 512
                 public_load_balancer=True,
             )  # Default is False
+            core.Tag.add(logstash_service, "project", ELK_PROJECT_TAG)
 
