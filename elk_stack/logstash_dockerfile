@@ -1,0 +1,55 @@
+FROM      centos:7
+MAINTAINER Francis McGregor-Macdonald
+
+# update packages
+RUN yum update -y
+
+# install java
+RUN yum install java-11-openjdk-devel -y
+
+# install git
+RUN yum install git -y
+
+# install pip
+RUN yum install python-pip -y
+
+# get elastic output to es
+RUN git clone https://github.com/awslabs/logstash-output-amazon_es.git /home/ec2-user/logstash-output-amazon_es
+
+# logstash
+RUN rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+
+# move logstash repo file
+ADD logstash.repo /etc/yum.repos.d/logstash.repo
+
+# get to the yum
+RUN yum install logstash -y
+
+# add user to logstash group
+RUN usermod -a -G logstash ec2-user
+
+# move logstash.yml to final location
+ADD logstash.yml /etc/logstash/logstash.yml
+
+# move logstash.conf to final location
+ADD logstash.conf.asset /etc/logstash/conf.d/logstash.conf
+
+# move plugin
+RUN mkdir /usr/share/logstash/plugins
+RUN mv -f /home/ec2-user/logstash-output-amazon_es /usr/share/logstash/plugins/logstash-output-amazon_es
+
+# update gemfile
+RUN sed -i '5igem "logstash-output-amazon_es", :path => "/usr/share/logstash/plugins/logstash-output-amazon_es"' /usr/share/logstash/Gemfile
+
+# update ownership
+RUN chown -R logstash:logstash /etc/logstash
+
+# get logstash starter script
+ADD logstash_start.sh /usr/local/bin/logstash_start.sh
+RUN chmod +x /usr/local/bin/logstash_start.sh
+
+# make logs directory
+RUN mkdir /opt/logs
+
+# start logstash
+CMD /usr/local/bin/start_logstash.sh

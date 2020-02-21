@@ -6,6 +6,9 @@ from aws_cdk import (
     aws_ec2 as ec2,
     aws_s3_assets as assets,
     aws_iam as iam,
+    aws_ecs as ecs,
+    aws_ecs_patterns as ecs_patterns,
+    aws_ecr_assets as ecr_assets,
 )
 from elk_stack.constants import (
     ELK_PROJECT_TAG,
@@ -23,7 +26,9 @@ external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 
 class LogstashStack(core.Stack):
-    def __init__(self, scope: core.Construct, id: str, vpc_stack, **kwargs) -> None:
+    def __init__(
+        self, scope: core.Construct, id: str, vpc_stack, fargate=True, **kwargs
+    ) -> None:
         super().__init__(scope, id, **kwargs)
 
         # get s3 bucket name
@@ -229,3 +234,34 @@ class LogstashStack(core.Stack):
         logstash_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
             resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
         )
+
+        # fargate for logstash
+        if fargate:
+            # docker image for logstash
+            logstash_image_asset = ecr_assets.DockerImageAsset(
+                self,
+                "logstash_image_asset",
+                directory=dirname,
+                file="logstash_dockerfile",
+            )
+
+            # create the fargate cluster
+            logstash_cluster = ecs.Cluster(
+                self, "logstash_cluster", vpc=vpc_stack.get_vpc
+            )
+
+            logstash_service = ecs_patterns.ApplicationLoadBalancedFargateService(
+                self,
+                "logstash_service",
+                cluster=logstash_cluster,  # Required
+                cpu=512,  # Default is 256
+                desired_count=6,  # Default is 1
+                task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
+                    image=ecs.ContainerImage.from_docker_image_asset(
+                        logstash_image_asset
+                    )
+                ),
+                memory_limit_mib=2048,  # Default is 512
+                public_load_balancer=True,
+            )  # Default is False
+
