@@ -62,7 +62,7 @@ logstash_stack = LogstashStack(
     app,
     "elk-logstash",
     vpc_stack,
-    fargate=True,
+    fargate=False,
     env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
 )
 logstash_stack.add_dependency(kafka_stack)

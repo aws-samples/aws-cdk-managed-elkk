@@ -7,8 +7,8 @@ from aws_cdk import (
     aws_s3_assets as assets,
     aws_iam as iam,
     aws_ecs as ecs,
-    aws_ecs_patterns as ecs_patterns,
     aws_ecr_assets as ecr_assets,
+    aws_logs as logs,
 )
 from elk_stack.constants import (
     ELK_PROJECT_TAG,
@@ -144,6 +144,14 @@ class LogstashStack(core.Stack):
         except IndexError:
             pass
 
+        # cloudwatch log group
+        logstash_logs = logs.LogGroup(
+            self,
+            "logstash_logs",
+            log_group_name="elk/logstash_logs",
+            removal_policy=core.RemovalPolicy.DESTROY,
+        )
+
         # create the logstash instance
         logstash_instance = ec2.Instance(
             self,
@@ -251,19 +259,25 @@ class LogstashStack(core.Stack):
             )
             core.Tag.add(logstash_cluster, "project", ELK_PROJECT_TAG)
 
-            logstash_service = ecs_patterns.ApplicationLoadBalancedFargateService(
+            # the task
+            logstash_task = ecs.FargateTaskDefinition(
                 self,
-                "logstash_service",
-                cluster=logstash_cluster,  # Required
-                cpu=512,  # Default is 256
-                desired_count=6,  # Default is 1
-                task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
-                    image=ecs.ContainerImage.from_docker_image_asset(
-                        logstash_image_asset
-                    )
-                ),
-                memory_limit_mib=2048,  # Default is 512
-                public_load_balancer=True,
-            )  # Default is False
-            core.Tag.add(logstash_service, "project", ELK_PROJECT_TAG)
+                "logstash_task",
+                cpu=512
+                # needs execution_role
+            ).add_container(
+                image=ecs.ContainerImage.from_docker_image_asset(logstash_image_asset),
+                logging=ecs.LogDrivers.aws_logs(log_group=logstash_logs),
+            )
 
+            # the service
+            logstash_service1 = ecs.FargateService(
+                self,
+                "logstash_service1",
+                cluster=logstash_cluster,
+                task_definition=logstash_task,
+                desired_count=3,
+                memory_limit_mib=2048,
+                security_group=logstash_security_group,
+                vpc_subnets=vpc_stack.get_vpc_private_subnet_ids,
+            )
