@@ -315,7 +315,7 @@ In the Filebeats Instance generate new logfiles
 python ./log_generator.py
 ```
 
-In Kibana view the new logs
+Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated.
 
 ### Cleanup
 

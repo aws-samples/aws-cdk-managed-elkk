@@ -143,7 +143,6 @@ class ElasticStack(core.Stack):
             # userdata for elastic client
             elastic_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
             elastic_userdata.add_commands(
-                "set -e",
                 # update packages
                 "yum update -y",
                 # send the cfn signal

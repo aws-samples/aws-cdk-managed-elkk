@@ -15,7 +15,6 @@ from elk_stack.constants import (
     ELK_KAFKA_BROKER_NODES,
     ELK_KAFKA_VERSION,
     ELK_KAFKA_INSTANCE_TYPE,
-    ELK_REGION,
     ELK_KEY_PAIR,
     ELK_TOPIC,
     ELK_KAFKA_CLIENT_INSTANCE,
@@ -145,17 +144,14 @@ class KafkaStack(core.Stack):
             # userdata for kafka client
             kafka_client_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
             kafka_client_userdata.add_commands(
-                "set -e",
                 # get setup assets files
                 f"aws s3 cp s3://{client_properties.s3_bucket_name}/{client_properties.s3_object_key} /home/ec2-user/client.properties",
                 # update packages
                 "yum update -y",
-                # signal build is done
-                f"/opt/aws/bin/cfn-signal --resource {kafka_client_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
                 # update java
                 "yum install java-1.8.0 -y",
-                # set elk_region region as env variable
-                f'echo "export AWS_DEFAULT_REGION={ELK_REGION}" >> /etc/profile',
+                # set region region as env variable
+                f'echo "export AWS_DEFAULT_REGION={core.Aws.REGION}" >> /etc/profile',
                 # install kakfa
                 f'wget https://www-us.apache.org/dist/kafka/{ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1]}/{ELK_KAFKA_DOWNLOAD_VERSION}.tgz',
                 f"tar -xvf {ELK_KAFKA_DOWNLOAD_VERSION}.tgz",
@@ -166,8 +162,6 @@ class KafkaStack(core.Stack):
                 # create the topic, if already exists capture error message
                 f"make_topic=`/opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/kafka-topics.sh --create --zookeeper {kafka_zookeeper} --replication-factor 3 --partitions 1 --topic {ELK_TOPIC} 2>&1`",
                 "echo $make_topic",
-                # update the certs file into correct location
-                "cp /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.222.b10-0.amzn2.0.1.x86_64/jre/lib/security/cacerts /tmp/kafka.client.truststore.jks",
                 # signal build is done
                 f"/opt/aws/bin/cfn-signal --resource {kafka_client_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
             )

@@ -15,12 +15,10 @@ from elk_stack.constants import (
     ELK_KEY_PAIR,
     ELK_FILEBEAT_INSTANCE,
     ELK_TOPIC,
-    ELK_REGION,
 )
 
 dirname = os.path.dirname(__file__)
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
-
 
 class FilebeatStack(core.Stack):
     def __init__(
@@ -28,8 +26,6 @@ class FilebeatStack(core.Stack):
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # assets for filebeat
-        filebeat_sh = assets.Asset(self, "filebeat_sh", path=filebeat_sh_asset)
         # log generator asset
         log_generator_py = assets.Asset(
             self, "log_generator", path=os.path.join(dirname, "log_generator.py")
@@ -75,7 +71,6 @@ class FilebeatStack(core.Stack):
             ),
             vpc=vpc_stack.get_vpc,
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
-            # user_data=fb_userdata,
             key_name=ELK_KEY_PAIR,
             security_group=kafka_stack.get_kafka_client_security_group,
         )
@@ -89,11 +84,13 @@ class FilebeatStack(core.Stack):
         # add the role permissions
         fb_instance.add_to_role_policy(statement=access_kafka_policy)
         # add access to the file asset
-        filebeat_sh.grant_read(fb_instance)
+        filebeat_yml.grant_read(fb_instance)
+        elastic_repo.grant_read(fb_instance)
+        log_generator_py.grant_read(fb_instance)
+        log_generator_requirements_txt.grant_read(fb_instance)
         # userdata for filebeat
         fb_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
         fb_userdata.add_commands(
-            "set -e",
             # get setup assets files
             f"aws s3 cp s3://{filebeat_yml.s3_bucket_name}/{filebeat_yml.s3_object_key} /home/ec2-user/filebeat.yml",
             f"aws s3 cp s3://{elastic_repo.s3_bucket_name}/{elastic_repo.s3_object_key} /home/ec2-user/elastic.repo",
@@ -101,14 +98,14 @@ class FilebeatStack(core.Stack):
             f"aws s3 cp s3://{log_generator_requirements_txt.s3_bucket_name}/{log_generator_requirements_txt.s3_object_key} /home/ec2-user/requirements.txt",
             # update packages
             "yum update -y",
-            # set elk_region region as env variable
-            f'echo "export AWS_DEFAULT_REGION={ELK_REGION}" >> /etc/profile',
+            # set region region as env variable
+            f'echo "export AWS_DEFAULT_REGION={core.Aws.REGION}" >> /etc/profile',
             # get python3
             "yum install python3 -y",
             # get pip
             "yum install python-pip -y",
             # make log generator executable
-            "chmod +x /home/ec2-user/log_generator.py" 
+            "chmod +x /home/ec2-user/log_generator.py",
             # get log generator requirements
             "python3 -m pip install -r /home/ec2-user/requirements.txt",
             # filebeat
@@ -119,11 +116,10 @@ class FilebeatStack(core.Stack):
             "yum install filebeat -y",
             # move filebeat.yml to final location
             "mv -f /home/ec2-user/filebeat.yml /etc/filebeat/filebeat.yml",
-            # ownership
+            # update log generator ownership
             "chown -R ec2-user:ec2-user /home/ec2-user",
             # start filebeat
             "systemctl start filebeat",
-            "systemctl status filebeat",
             # send the cfn signal
             f"/opt/aws/bin/cfn-signal --resource {fb_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
         )

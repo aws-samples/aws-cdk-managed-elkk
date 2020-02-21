@@ -29,16 +29,6 @@ kafka_stack = KafkaStack(
 )
 kafka_stack.add_dependency(vpc_stack)
 
-# create the elasticsearch domain
-elastic_stack = ElasticStack(
-    app,
-    "elk-elastic",
-    vpc_stack,
-    client=True,
-    env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
-)
-elastic_stack.add_dependency(vpc_stack)
-
 # filebeat stack (filebeat on ec2)
 filebeat_stack = FilebeatStack(
     app,
@@ -48,6 +38,16 @@ filebeat_stack = FilebeatStack(
     env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
 )
 filebeat_stack.add_dependency(kafka_stack)
+
+# create the elasticsearch domain
+elastic_stack = ElasticStack(
+    app,
+    "elk-elastic",
+    vpc_stack,
+    client=True,
+    env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
+)
+elastic_stack.add_dependency(vpc_stack)
 
 # athena 
 athena_stack = AthenaStack(
