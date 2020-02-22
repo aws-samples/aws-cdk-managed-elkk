@@ -1,5 +1,4 @@
 FROM      centos:8
-MAINTAINER Francis McGregor-Macdonald
 
 # update packages
 RUN yum update -y
@@ -16,13 +15,13 @@ RUN rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
 # move logstash repo file
 ADD logstash.repo /etc/yum.repos.d/logstash.repo
 
-# get to the yum
+# install logstash with yum
 RUN yum install logstash -y
 
-# move logstash.yml to final location
+# place the config
 ADD logstash.yml /etc/logstash/logstash.yml
 
-# move logstash.conf to final location
+# place the pipeline
 ADD logstash.conf.asset /etc/logstash/conf.d/logstash.conf
 
 # make directory for plugins

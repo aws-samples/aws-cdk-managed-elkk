@@ -27,7 +27,13 @@ external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 class LogstashStack(core.Stack):
     def __init__(
-        self, scope: core.Construct, id: str, vpc_stack, fargate=True, **kwargs
+        self,
+        scope: core.Construct,
+        id: str,
+        vpc_stack,
+        fargate=True,
+        fargate_service=True,
+        **kwargs,
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
@@ -148,7 +154,7 @@ class LogstashStack(core.Stack):
         logstash_logs = logs.LogGroup(
             self,
             "logstash_logs",
-            log_group_name="elk/logstash_logs",
+            log_group_name="elkk/logstash",
             removal_policy=core.RemovalPolicy.DESTROY,
         )
 
@@ -259,25 +265,38 @@ class LogstashStack(core.Stack):
             )
             core.Tag.add(logstash_cluster, "project", ELK_PROJECT_TAG)
 
-            # the task
-            logstash_task = ecs.FargateTaskDefinition(
-                self,
-                "logstash_task",
-                cpu=512
-                # needs execution_role
-            ).add_container(
-                image=ecs.ContainerImage.from_docker_image_asset(logstash_image_asset),
-                logging=ecs.LogDrivers.aws_logs(log_group=logstash_logs),
-            )
+            # for tweaking the service
+            if fargate_service:
+                # the task
+                logstash_task = ecs.FargateTaskDefinition(
+                    self, "logstash_task", cpu=512, memory_limit_mib=1024,
+                )
 
-            # the service
-            logstash_service1 = ecs.FargateService(
-                self,
-                "logstash_service1",
-                cluster=logstash_cluster,
-                task_definition=logstash_task,
-                desired_count=3,
-                memory_limit_mib=2048,
-                security_group=logstash_security_group,
-                vpc_subnets=vpc_stack.get_vpc_private_subnet_ids,
-            )
+                logstash_task.add_container(
+                    "logstash_image",
+                    image=ecs.ContainerImage.from_docker_image_asset(
+                        logstash_image_asset
+                    ),
+                    logging=ecs.LogDrivers.aws_logs(
+                        stream_prefix="elkk", log_group=logstash_logs
+                    ),
+                )
+                print(logstash_task._generate_physical_name)
+
+                # the service
+                logstash_service = (
+                    ecs.FargateService(
+                        self,
+                        "logstash_service",
+                        cluster=logstash_cluster,
+                        task_definition=logstash_task,
+                        security_group=logstash_security_group,
+                    )
+                    .auto_scale_task_count(min_capacity=3, max_capacity=10)
+                    .scale_on_cpu_utilization(
+                        "logstash_scaling",
+                        target_utilization_percent=75,
+                        scale_in_cooldown=core.Duration.seconds(60),
+                        scale_out_cooldown=core.Duration.seconds(60),
+                    )
+                )
