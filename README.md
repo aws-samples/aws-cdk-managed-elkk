@@ -13,7 +13,7 @@ AWS CLI - https://aws.amazon.com/cli/
 Git -  https://git-scm.com/downloads  
 python (3.6 or later) - https://www.python.org/downloads/  
 Git Bash for Windows - https://gitforwindows.org/ (windows only)
-
+Docker - https://www.docker.com/
 
 ### Set up the Environment
 
@@ -277,6 +277,22 @@ cdk deploy elk-athena
 ### Logstash
 
 Logstash layer will perform a dual-purpose of reading the data from Amazon MSK and indexing the logs to Amazon Elasticsearch in real-time as well as archiving the data to S3. Auto-scaling on the Logstash nodes can be implemented to reduce costs.
+
+Check the app.py file and verify that the elk-logstash stack is set to ec2 and not fargate.
+```python
+# logstash stack
+logstash_stack = LogstashStack(
+    app,
+    "elk-logstash",
+    vpc_stack,
+    logstash_ec2=True,
+    fargate=False,
+    fargate_service=False,
+    env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
+)
+```
+
+When we deploy the elk-stack we will be deploying logstash on ec2.
 
 ```bash
 cdk deploy elk-logstash
