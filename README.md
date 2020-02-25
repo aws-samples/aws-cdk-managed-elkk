@@ -87,7 +87,7 @@ ELK_LOGSTASH_INSTANCE = "t2.xlarge"
 
 Run all terminal comments from the project root directory.
 
-Confrim that the project is correctly set up.
+Confirm that the project is correctly set up.
 
 ```bash
 cdk synth
@@ -286,8 +286,7 @@ logstash_stack = LogstashStack(
     "elk-logstash",
     vpc_stack,
     logstash_ec2=True,
-    fargate=False,
-    fargate_service=False,
+    logstash_fargate=False,
     env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
 )
 ```
@@ -298,7 +297,7 @@ When we deploy the elk-stack we will be deploying logstash on ec2.
 cdk deploy elk-logstash
 ```
 
-An Amazon EC2 instance is deployed with Logstash installed and configured with an input from Kafka and output to Elasticsearch.  
+An Amazon EC2 instance is deployed with Logstash installed and configured with an input from Kafka and output to Elasticsearch and s3.
 
 Wait until 2/2 checks are completed on the Logstash instance to ensure that the userdata scripts have fully run.  
 
@@ -331,7 +330,39 @@ In the Filebeats Instance generate new logfiles
 python ./log_generator.py
 ```
 
-Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated.
+Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated. Navigate to s3 to view the files pushed to s3.
+
+Update the logstash deployment from Amazon ec2 to Amazon Fargate.
+
+Update the app.py file and verify that the elk-logstash stack is set to fargate and not ec2.
+```python
+# logstash stack
+logstash_stack = LogstashStack(
+    app,
+    "elk-logstash",
+    vpc_stack,
+    logstash_ec2=False,
+    logstash_fargate=True,
+    env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
+)
+```
+
+Deploy the updated stack
+
+```bash
+cdk deploy elk-logstash
+```
+
+The logstash ec2 instance will be terminated and an Amazon Fargate cluster will be created. Logstash will be deployed as containerized tasks.
+
+In the Filebeats Instance generate new logfiles
+
+```bash
+# geneate new logs
+python ./log_generator.py
+```
+
+Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated and to s3 to view the files pushed into s3.
 
 ### Cleanup
 

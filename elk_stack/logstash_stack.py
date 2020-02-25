@@ -165,6 +165,7 @@ class LogstashStack(core.Stack):
         )
 
         # create policies for logstash
+        # elastic policy
         access_elastic_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=[
@@ -208,12 +209,12 @@ class LogstashStack(core.Stack):
             logstash_repo.grant_read(logstash_instance)
             logstash_conf.grant_read(logstash_instance)
 
-            # add the role permissions to instance
+            # add permissions to instance
             logstash_instance.add_to_role_policy(statement=access_elastic_policy)
             logstash_instance.add_to_role_policy(statement=access_kafka_policy)
             logstash_instance.add_to_role_policy(statement=access_s3_policy)
 
-            # userdata for logstash
+            # userdata for logstash instance
             logstash_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
             logstash_userdata.add_commands(
                 "set -e",
@@ -298,6 +299,7 @@ class LogstashStack(core.Stack):
 
             # add permissisons to the task
             logstash_task.add_to_task_role_policy(access_s3_policy)
+            logstash_task.add_to_task_role_policy(access_elastic_policy)
 
             # the service
             logstash_service = (
