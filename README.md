@@ -11,7 +11,7 @@ AWS CDK - https://docs.aws.amazon.com/cdk/index.html
 AWS CLI - https://aws.amazon.com/cli/  
 Git -  https://git-scm.com/downloads  
 python (3.6 or later) - https://www.python.org/downloads/  
-Git Bash for Windows - https://gitforwindows.org/ (windows only)
+Git Bash for Windows - https://gitforwindows.org/ (windows only)  
 Docker - https://www.docker.com/
 
 ### Set up the Environment
