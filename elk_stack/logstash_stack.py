@@ -136,7 +136,8 @@ class LogstashStack(core.Stack):
                 logstash_security_group, ec2.Port.all_traffic(), "from logstash",
             )
         except IndexError:
-            print("kafka_sg_id and kafka_security_group not found")
+            # print("kafka_sg_id and kafka_security_group not found")
+            pass
 
         # get security group for elastic
         try:

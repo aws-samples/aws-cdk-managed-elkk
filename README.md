@@ -1,4 +1,3 @@
-
 # Building an ELKK Stack
 
 Because: Filebeat > Kafka > Logstash > ElasticSearch > Kibana
@@ -42,7 +41,7 @@ aws ec2 create-key-pair --key-name $yourkeypair --query 'KeyMaterial' --output t
 # update key_pair permissions
 chmod 400 $yourkeypair.pem
 # move key_pair to .ssh
-mv $yourkeypair.pem $HOME/.ssh/ElkKeyPair.pem
+mv $yourkeypair.pem $HOME/.ssh/$yourkeypair.pem
 # add ssh key to keychain
 ssh-add ~/.ssh/$yourkeypair.pem
 ```
@@ -88,10 +87,6 @@ ELK_LOGSTASH_INSTANCE = "t2.xlarge"
 Run all terminal comments from the project root directory.
 
 Confirm that the project is correctly set up.
-
-```bash
-cdk synth
-```
 
 ### Boostrap the CDK
 

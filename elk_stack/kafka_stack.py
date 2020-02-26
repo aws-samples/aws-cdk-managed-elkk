@@ -1,7 +1,8 @@
 # import modules
 import os
 import io
-import boto3
+
+# import boto3
 import urllib.request
 from aws_cdk import (
     core,
@@ -31,22 +32,6 @@ class KafkaStack(core.Stack):
         self, scope: core.Construct, id: str, vpc_stack, client: bool = True, **kwargs
     ) -> None:
         super().__init__(scope, id, **kwargs)
-
-        # get the zookeeper from the kakfa cluster
-        kafkaclient = boto3.client("kafka")
-        kafka_clusters = kafkaclient.list_clusters()
-        try:
-            kafka_arn = [
-                kc["ClusterArn"]
-                for kc in kafka_clusters["ClusterInfoList"]
-                if "elk-" in kc["ClusterName"]
-            ][0]
-
-            kafka_zookeeper = kafkaclient.describe_cluster(ClusterArn=kafka_arn)[
-                "ClusterInfo"
-            ]["ZookeeperConnectString"]
-        except IndexError:
-            kafka_zookeeper = ""
 
         # create assets
         client_properties = assets.Asset(
@@ -134,7 +119,11 @@ class KafkaStack(core.Stack):
             # create policies for ec2 to connect to kafka
             access_kafka_policy = iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=["kafka:ListClusters", "kafka:GetBootstrapBrokers",],
+                actions=[
+                    "kafka:ListClusters",
+                    "kafka:GetBootstrapBrokers",
+                    "kafka:DescribeCluster",
+                ],
                 resources=["*"],
             )
             # add the role permissions
@@ -160,7 +149,10 @@ class KafkaStack(core.Stack):
                 # move client.properties to correct location
                 f"mv -f /home/ec2-user/client.properties /opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/client.properties",
                 # create the topic, if already exists capture error message
-                f"make_topic=`/opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/kafka-topics.sh --create --zookeeper {kafka_zookeeper} --replication-factor 3 --partitions 1 --topic {ELK_TOPIC} 2>&1`",
+                "kafka_arn=`aws kafka list-clusters --region us-east-1 --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn",
+                "kafka_zookeeper=`aws kafka describe-cluster --region us-east-1 --cluster-arn $kafka_arn --output text --query 'ClusterInfo.ZookeeperConnectString'` && echo $kafka_zookeeper",
+                # get the zookeeper
+                f"make_topic=`/opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/kafka-topics.sh --create --zookeeper $kafka_zookeeper --replication-factor 3 --partitions 1 --topic {ELK_TOPIC} 2>&1`",
                 "echo $make_topic",
                 # signal build is done
                 f"/opt/aws/bin/cfn-signal --resource {kafka_client_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
