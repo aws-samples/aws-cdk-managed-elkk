@@ -271,9 +271,9 @@ cdk deploy elk-athena
 
 ### Logstash
 
-Logstash layer will perform a dual-purpose of reading the data from Amazon MSK and indexing the logs to Amazon Elasticsearch in real-time as well as archiving the data to S3. Auto-scaling on the Logstash nodes can be implemented to reduce costs.
+The Logstash layer will perform a dual-purpose of reading the data from Amazon MSK and indexing the logs to Amazon Elasticsearch in real-time as well as archiving the data to S3. Auto-scaling on the Logstash nodes can be implemented to reduce costs.
 
-Check the app.py file and verify that the elk-logstash stack is set to ec2 and not fargate.
+Check the app.py file and verify that the elk-logstash stack is initially set to create logstash on ec2 and not on fargate.
 ```python
 # logstash stack
 logstash_stack = LogstashStack(
@@ -308,8 +308,6 @@ ssh ec2-user@$logstash_dns
 While connected to logstash instance:
 
 ```bash
-# confirm the conf file has the correct cluster and domain
-cat /etc/logstash/conf.d/logstash.conf
 # verify the logstash config
 /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.d/logstash.conf
 # check the logstash status
@@ -322,14 +320,15 @@ In the Filebeats Instance generate new logfiles
 
 ```bash
 # geneate new logs
-python ./log_generator.py
+./log_generator.py
 ```
 
 Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated. Navigate to s3 to view the files pushed to s3.
 
-Update the logstash deployment from Amazon ec2 to Amazon Fargate.
+Update the logstash deployment from Amazon ec2 to AWS Fargate.
 
 Update the app.py file and verify that the elk-logstash stack is set to fargate and not ec2.
+
 ```python
 # logstash stack
 logstash_stack = LogstashStack(
@@ -342,19 +341,19 @@ logstash_stack = LogstashStack(
 )
 ```
 
-Deploy the updated stack
+Deploy the updated stack, terminating the Logstash EC2 instance and creating a Logstash service on AWS Fargate.
 
 ```bash
 cdk deploy elk-logstash
 ```
 
-The logstash ec2 instance will be terminated and an Amazon Fargate cluster will be created. Logstash will be deployed as containerized tasks.
+The logstash ec2 instance will be terminated and an AWS Fargate cluster will be created. Logstash will be deployed as containerized tasks.
 
-In the Filebeats Instance generate new logfiles
+In the Filebeats Instance generate new logfiles.
 
 ```bash
 # geneate new logs
-python ./log_generator.py
+./log_generator.py
 ```
 
 Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated and to s3 to view the files pushed into s3.
@@ -362,6 +361,7 @@ Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the
 ### Cleanup
 
 To clean up the stacks... destroy the elk-vpc stack, all other stacks will be torn down due to dependancies. 
+
 Cloudwatch logs will need to be separately removed.
 
 ```bash
