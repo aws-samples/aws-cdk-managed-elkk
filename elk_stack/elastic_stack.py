@@ -145,6 +145,8 @@ class ElasticStack(core.Stack):
             elastic_userdata.add_commands(
                 # update packages
                 "yum update -y",
+                # set cli default region
+                f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
                 # send the cfn signal
                 f"/opt/aws/bin/cfn-signal --resource {elastic_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
             )

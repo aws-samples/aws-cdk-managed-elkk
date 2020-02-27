@@ -1,11 +1,42 @@
-# Building an ELKK Stack
+# Building an ELKK Stack 
+ 
+This repository contains an implimentation example of a managed ELKK stack using the AWS Cloud Development Kit. This example uses Python.
 
-Because: Filebeat > Kafka > Logstash > ElasticSearch > Kibana
+## Table of Contents
+1. [Context](#context)
+2. [Prerequisites](#prerequisites)
+3. [Amazon Virtual Private Cloud](#vpc)
+4. [Amazon Managed Streaming for Apache Kafka](#kafka)
+5. [Filebeats](#filebeats)
+6. [Amazon Elasticsearch Service](#elastic)
+7. [Amazon Athena](#athena)
+8. [Logstash](#logstash)
+9. [Clean up](#cleanup)
 
+## Context <a name="context"></a>
+
+The ELKK stack is a pipeline of services to support real-time reporting and analytics. Amazon services can provide a managed ELKK stack using the services Amazon Elasticsearch Service, Logstash on Amazon EC2 or on Amazon Elastic Container Services and Amazon Managed Streaming for Kafka. Kibana is included as a capability of the Amazon Elasticsearch Service. As part of a hoslistic solution Logstash in addition to outputing logs to Amazon Elasticsearch outputs the log to Amazon S3 for longer term storage. Amazon Athena can be used to directly query files in Amazon S3.
+
+### Components
+
+Filebeat agents will be used to collect the logs from the application/host systems, and publish the logs to Amazon MSK. Filebeats agents are deployed on an Amazon EC2 instance to simulate log generation.
+
+Amazon Managed Streaming for Kafka (Amazon MSK) is used as a buffering layer to handle the collection of logs and manage the back-pressure from downstream components in the architecture. The buffering layer will provide recoverability and extensibility in the platform.
+
+The Logstash layer will perform a dual-purpose of reading the data from Amazon MSK and indexing the logs to Amazon Elasticsearch in real-time as well as storing the data to S3.
+
+Users can search for logs in Amazon Elasticsearch Service using Kibana front-end UI application. Amazon Elasticsearch is a fully managed service which provides a rich set of features such as Dashboards, Alerts, SQL query support and much more which can be used based on workload specific requirements.
+
+Logs are stored in Amazon S3 to support cold data log analysis requirements. AWS Glue catalog will store the metadata information associated with the log files to be made available to the user for ad-hoc analysis.
+
+Amazon Athena supports SQL queries against log data stored in Amazon S3.
 
 ![ELKK Architecture](elkk_architecture.png)
 
-## Prerequisites
+-----
+## Prerequisites <a name="prereqisites"></a>
+
+The following tools are required to deploy this Amazon Managed ELKK stack.
 
 AWS CDK - https://docs.aws.amazon.com/cdk/index.html  
 AWS CLI - https://aws.amazon.com/cli/  
@@ -32,6 +63,8 @@ python -m venv .env
 pip install -r requirements.txt
 ```
 
+Create the EC2 SSH key pair allowing connections to Amazon EC2 instances.
+
 ```bash
 # name the key pair
 yourkeypair="yourkeypair"
@@ -50,7 +83,7 @@ ssh-add ~/.ssh/$yourkeypair.pem
 
 Create a file in the project "elk_stack" folder as "constants.py"  
 
-Create the file content as below file with the correct region and account, ensure that the keypair name matches that used previously
+Create the file content as below file with the correct region and account, ensure that the keypair name matches that used previously.
 
 ```python
 #!/usr/bin/env python3
@@ -90,14 +123,17 @@ Confirm that the project is correctly set up.
 
 ### Boostrap the CDK
 
-Create the CDK configuration bucket.
+Create the CDK configuration by bootstrapping the CDK.
 
 ```bash
 # bootstrap the cdk
 cdk bootstrap aws://youraccount/$yourregion
 ```
 
-### Amazon Virtual Private Cloud
+-----
+## Amazon Virtual Private Cloud <a name="vpc"></a>
+
+The first stage in the ELKK deployment is to create an Amazon Virtual Private Cloud with public and private subnets. The ELKK deployment will be into this VPC.
 
 Use the AWS CDK to deploy an Amazon VPC across multiple availability zones.
 
@@ -106,11 +142,12 @@ Use the AWS CDK to deploy an Amazon VPC across multiple availability zones.
 cdk deploy elk-vpc
 ```
 
-### Amazon Managed Streaming for Apache Kafka
+-----
+## Amazon Managed Streaming for Apache Kafka <a name="kafka"></a>
 
-Amazon Managed Streaming for Kafka (Amazon MSK) will be used as a buffering layer to handle the collection of logs and manage the back-pressure from downstream components in the architecture. The buffering layer will provide recoverability and extensibility in the platform.
+The second stage in the ELKK deployment is to create the Amazon Managed Streaming for Apache Kafka cluster. An Amazon EC2 instance is created with the Apache Kafka client installed to interact with the Amazon MSK cluster.
 
-Use the AWS CDK to deploy an Amazon MSK Cluster into the VPC.  
+Use the AWS CDK to deploy an Amazon MSK Cluster into the VPC.
 
 ```bash
 # deploy the kafka stack
@@ -134,9 +171,9 @@ While connected to the Kafka client instance create the producer session:
 
 ```bash
 # Get the cluster ARN
-kafka_arn=`aws kafka list-clusters --region us-east-1 --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
+kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
 # Get the bootstrap brokers
-kafka_brokers=`aws kafka get-bootstrap-brokers --region us-east-1 --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
+kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a producer 
 /opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkstacktopic
 ```
@@ -156,9 +193,9 @@ While connected to the Kafka client instance create the consumer session:
 
 ```bash
 # Get the cluster ARN
-kafka_arn=`aws kafka list-clusters --region us-east-1 --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
+kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
 # Get the bootstrap brokers
-kafka_brokers=`aws kafka get-bootstrap-brokers --region us-east-1 --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
+kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a consumer
 /opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkstacktopic --from-beginning
 ```
@@ -167,9 +204,10 @@ Leave the Kafka consumer window open.
 
 Messages typed into the Kafka producer window should appear in the Kafka consumer window.  
 
-### Filebeats
+-----
+## Filebeats <a name=#filebeats></a>
 
-Filebeat agents will be used to collect the logs from the application/host systems, and publish the logs to Amazon MSK.
+To simulate incoming logs for the ELKK cluster Filebeats will be installed on an Amazon EC2 instance. Filebeats is configured to read logs generated by a log generator installed on the EC2 instance and push the logs to the Amazon MSK cluster.
 
 Use the AWS CDK to create an Amazon EC2 instance installed with filebeat and a dummy log generator.
 
@@ -200,9 +238,10 @@ While connected to the Filebeat instance create dummy logs:
 
 Messages generated by the log generator should appear in the Kafka consumer terminal window.
 
-### Amazon Elasticsearch Service
+-----
+## Amazon Elasticsearch Service <a name=#elastic></a>
 
-Users can search for logs in Amazon Elasticsearch Service using Kibana front-end UI application. Amazon Elasticsearch is a fully managed service which provides a rich set of features such as Dashboards, Alerts, SQL query support and much more which can be used based on workload specific requirements.
+The Amazon Elasticsearch Service privides with the Elasticsearch domain and the Kibana dashboards. An EC2 instance is created to interact with the Elasticsearch domain, and can be used to create an SSH tunnel into the VPC for Kibana dashboard viewing.
 
 ```bash
 # deploy the elastic stack
@@ -228,9 +267,9 @@ While connected to the Elastic Instance:
 
 ```bash
 # get the elastic domain
-elastic_domain=`aws es list-domain-names --region us-east-1 --output text --query '*'` && echo $elastic_domain
+elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $elastic_domain
 # get the elastic endpoint
-elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
+elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # curl a doc into elasticsearch
 curl -XPOST $elastic_endpoint/elkstack-test/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
 # curl to query elasticsearch
@@ -249,7 +288,7 @@ elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --ou
 # get the elastic domain
 elastic_domain=`aws es list-domain-names --region us-east-1 --output text --query '*'` && echo $elastic_domain
 # get the elastic endpoint
-elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --region us-east-1 --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
+elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # create the tunnel
 ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443
 ```
@@ -258,22 +297,25 @@ Leave the tunnel terminal window open.
 
 Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana.
 
-## Amazon Athena
+-----
+## Amazon Athena <a name=#athena></a>
 
-Amazon Athena supports SQL queries against log data stored in Amazon S3. Best practices related to partitioning of log data in the S3 storage with a suitable file storage format can help reduce the costs of querying the data from Athena.
-
-Logs are stored in Amazon S3 to support cold data log analysis requirements. The log files can be stored in read-optimized file formats for faster query capabilities. AWS Glue catalog will store the metadata information associated with the log files to be made available to the user for ad-hoc analysis.
-
+Amazon Simple Storage Service is used to storage logs for longer term storage. Amazon Athena can be used to query files on S3. 
 
 ```bash
+# deploy the athena stack
 cdk deploy elk-athena
 ```
 
-### Logstash
+-----
+## Logstash <a name=#logstash></a>
 
-The Logstash layer will perform a dual-purpose of reading the data from Amazon MSK and indexing the logs to Amazon Elasticsearch in real-time as well as archiving the data to S3. Auto-scaling on the Logstash nodes can be implemented to reduce costs.
+Logstash is deployed to subsribe to the Kafka topics and output the data into Elasticsearch. An additional output is added to push the data into S3. Logstash additionally parses the apache common log format and transforms the log data into json format.
+
+Deploy logstash first on an Amazon EC2 instance.
 
 Check the app.py file and verify that the elk-logstash stack is initially set to create logstash on ec2 and not on fargate.
+
 ```python
 # logstash stack
 logstash_stack = LogstashStack(
@@ -323,9 +365,11 @@ In the Filebeats Instance generate new logfiles
 ./log_generator.py
 ```
 
-Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated. Navigate to s3 to view the files pushed to s3.
+Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated.  
 
-Update the logstash deployment from Amazon ec2 to AWS Fargate.
+Navigate to s3 to view the files pushed to s3.
+
+Logstash can be deployed into containers or virtual machines. To deploy logstash on containers update the logstash deployment from Amazon ec2 to AWS Fargate.
 
 Update the app.py file and verify that the elk-logstash stack is set to fargate and not ec2.
 
@@ -356,9 +400,12 @@ In the Filebeats Instance generate new logfiles.
 ./log_generator.py
 ```
 
-Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated and to s3 to view the files pushed into s3.
+Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated.
 
-### Cleanup
+Navigat to s3 to view the files pushed into s3.
+
+-----
+## Cleanup <a name=#cleanup></a>
 
 To clean up the stacks... destroy the elk-vpc stack, all other stacks will be torn down due to dependancies. 
 

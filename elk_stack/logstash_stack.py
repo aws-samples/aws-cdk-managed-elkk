@@ -229,8 +229,10 @@ class LogstashStack(core.Stack):
                 "amazon-linux-extras install java-openjdk11 -y",
                 # install git
                 "yum install git -y",
-                # install supervisord
+                # install pip
                 "yum install python-pip -y",
+                # set cli default region
+                f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
                 # get elastic output to es
                 "git clone https://github.com/awslabs/logstash-output-amazon_es.git /home/ec2-user/logstash-output-amazon_es",
                 # logstash
