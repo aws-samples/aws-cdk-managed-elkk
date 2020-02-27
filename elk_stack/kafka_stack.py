@@ -139,8 +139,8 @@ class KafkaStack(core.Stack):
                 "yum update -y",
                 # update java
                 "yum install java-1.8.0 -y",
-                # set region region as env variable
-                f'echo "export AWS_DEFAULT_REGION={core.Aws.REGION}" >> /etc/profile',
+                # set cli default region
+                f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
                 # install kakfa
                 f'wget https://www-us.apache.org/dist/kafka/{ELK_KAFKA_DOWNLOAD_VERSION.split("-")[-1]}/{ELK_KAFKA_DOWNLOAD_VERSION}.tgz',
                 f"tar -xvf {ELK_KAFKA_DOWNLOAD_VERSION}.tgz",

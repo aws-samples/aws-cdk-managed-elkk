@@ -104,6 +104,8 @@ class FilebeatStack(core.Stack):
             "yum install python3 -y",
             # get pip
             "yum install python-pip -y",
+            # set cli default region
+            f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
             # make log generator executable
             "chmod +x /home/ec2-user/log_generator.py",
             # get log generator requirements
