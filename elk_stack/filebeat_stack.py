@@ -98,8 +98,6 @@ class FilebeatStack(core.Stack):
             f"aws s3 cp s3://{log_generator_requirements_txt.s3_bucket_name}/{log_generator_requirements_txt.s3_object_key} /home/ec2-user/requirements.txt",
             # update packages
             "yum update -y",
-            # set region region as env variable
-            f'echo "export AWS_DEFAULT_REGION={core.Aws.REGION}" >> /etc/profile',
             # get python3
             "yum install python3 -y",
             # get pip

@@ -149,8 +149,8 @@ class KafkaStack(core.Stack):
                 # move client.properties to correct location
                 f"mv -f /home/ec2-user/client.properties /opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/client.properties",
                 # create the topic, if already exists capture error message
-                "kafka_arn=`aws kafka list-clusters --region us-east-1 --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn",
-                "kafka_zookeeper=`aws kafka describe-cluster --region us-east-1 --cluster-arn $kafka_arn --output text --query 'ClusterInfo.ZookeeperConnectString'` && echo $kafka_zookeeper",
+                "kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn",
+                "kafka_zookeeper=`aws kafka describe-cluster --cluster-arn $kafka_arn --output text --query 'ClusterInfo.ZookeeperConnectString'` && echo $kafka_zookeeper",
                 # get the zookeeper
                 f"make_topic=`/opt/{ELK_KAFKA_DOWNLOAD_VERSION}/bin/kafka-topics.sh --create --zookeeper $kafka_zookeeper --replication-factor 3 --partitions 1 --topic {ELK_TOPIC} 2>&1`",
                 "echo $make_topic",
