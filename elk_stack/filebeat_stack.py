@@ -9,7 +9,7 @@ from aws_cdk import (
     aws_s3_assets as assets,
 )
 import boto3
-from elk_stack.helpers import file_updated
+from elk_stack.helpers import file_updated, kafka_get_brokers
 from elk_stack.constants import (
     ELK_PROJECT_TAG,
     ELK_KEY_PAIR,
@@ -26,6 +26,8 @@ class FilebeatStack(core.Stack):
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
+        print(kafka_stack.get_kafka_brokerstring)
+
         # log generator asset
         log_generator_py = assets.Asset(
             self, "log_generator", path=os.path.join(dirname, "log_generator.py")
@@ -38,19 +40,8 @@ class FilebeatStack(core.Stack):
         )
 
         # get kakfa brokers
-        kafkaclient = boto3.client("kafka")
-        kafka_clusters = kafkaclient.list_clusters()
-        try:
-            kafka_arn = [
-                kc["ClusterArn"]
-                for kc in kafka_clusters["ClusterInfoList"]
-                if "elk-" in kc["ClusterName"]
-            ][0]
-            kafka_brokers = kafkaclient.get_bootstrap_brokers(ClusterArn=kafka_arn)
-            kafka_brokers = kafka_brokers["BootstrapBrokerString"]
-            kafka_brokers = f'''"{kafka_brokers.replace(",", '", "')}"'''
-        except IndexError:
-            kafka_brokers = ""
+        kafka_brokers = f'''"{kafka_get_brokers().replace(",", '", "')}"'''
+
         # update filebeat.yml to .asset
         filebeat_yml_asset = file_updated(
             os.path.join(dirname, "filebeat.yml"),
@@ -79,7 +70,7 @@ class FilebeatStack(core.Stack):
         access_kafka_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["kafka:ListClusters", "kafka:GetBootstrapBrokers",],
-            resources=["*"],
+            resources=["*"]
         )
         # add the role permissions
         fb_instance.add_to_role_policy(statement=access_kafka_policy)

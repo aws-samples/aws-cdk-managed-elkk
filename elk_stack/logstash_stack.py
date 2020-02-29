@@ -17,7 +17,7 @@ from elk_stack.constants import (
     ELK_TOPIC,
     ELK_LOGSTASH_INSTANCE,
 )
-from elk_stack.helpers import file_updated
+from elk_stack.helpers import file_updated, kafka_get_brokers
 import boto3
 from botocore.exceptions import ClientError
 
@@ -63,20 +63,6 @@ class LogstashStack(core.Stack):
         except IndexError:
             es_endpoint = ""
 
-        # get kakfa brokers
-        kafkaclient = boto3.client("kafka")
-        kafka_clusters = kafkaclient.list_clusters()
-        try:
-            kafka_arn = [
-                kc["ClusterArn"]
-                for kc in kafka_clusters["ClusterInfoList"]
-                if "elk-" in kc["ClusterName"]
-            ][0]
-            kafka_brokers = kafkaclient.get_bootstrap_brokers(ClusterArn=kafka_arn)
-            kafka_brokers = kafka_brokers["BootstrapBrokerString"]
-        except IndexError:
-            kafka_brokers = ""
-
         # assets for logstash stack
         logstash_yml = assets.Asset(
             self, "logstash_yml", path=os.path.join(dirname, "logstash.yml")
@@ -86,12 +72,13 @@ class LogstashStack(core.Stack):
         )
 
         # update conf file to .asset
+        # kafka brokerstring does not need reformatting
         logstash_conf_asset = file_updated(
             os.path.join(dirname, "logstash.conf"),
             {
                 "$s3_bucket": s3_bucket_name,
                 "$es_endpoint": es_endpoint,
-                "$kafka_brokers": kafka_brokers,
+                "$kafka_brokers": kafka_get_brokers(),
                 "$elk_region": ELK_REGION,
                 "$elk_topic": ELK_TOPIC,
             },
@@ -272,10 +259,7 @@ class LogstashStack(core.Stack):
         if logstash_fargate:
             # docker image for logstash
             logstash_image_asset = ecr_assets.DockerImageAsset(
-                self,
-                "logstash_image_asset",
-                directory=dirname,
-                file="Dockerfile"
+                self, "logstash_image_asset", directory=dirname, file="Dockerfile"
             )
 
             # create the fargate cluster
@@ -292,9 +276,7 @@ class LogstashStack(core.Stack):
             # add container to the task
             logstash_task.add_container(
                 "logstash_image",
-                image=ecs.ContainerImage.from_docker_image_asset(
-                    logstash_image_asset
-                ),
+                image=ecs.ContainerImage.from_docker_image_asset(logstash_image_asset),
                 logging=ecs.LogDrivers.aws_logs(
                     stream_prefix="elkk", log_group=logstash_logs
                 ),

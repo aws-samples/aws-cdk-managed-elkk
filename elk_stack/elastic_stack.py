@@ -126,9 +126,9 @@ class ElasticStack(core.Stack):
                 security_group=elastic_client_security_group,
             )
             core.Tag.add(elastic_instance, "project", ELK_PROJECT_TAG)
-            # needs kafka cluster to be available
+            # needs elastic domain to be available
             elastic_instance.node.add_dependency(elastic_domain)
-            # create policies for ec2 to connect to kafka
+            # create policies for ec2 to connect to elastic
             access_elastic_policy = iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=[

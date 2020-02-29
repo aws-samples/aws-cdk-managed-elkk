@@ -21,7 +21,7 @@ from elk_stack.constants import (
     ELK_KAFKA_CLIENT_INSTANCE,
     ELK_KAFKA_DOWNLOAD_VERSION,
 )
-from elk_stack.helpers import file_updated
+from elk_stack.helpers import file_updated, kafka_get_brokers
 
 dirname = os.path.dirname(__file__)
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
@@ -168,3 +168,7 @@ class KafkaStack(core.Stack):
     @property
     def get_kafka_client_security_group(self):
         return self.kafka_client_security_group
+    
+    @property
+    def get_kafka_brokerstring(self):
+        return kafka_get_brokers()
