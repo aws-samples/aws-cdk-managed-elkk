@@ -2,7 +2,6 @@
 from aws_cdk import (
     core,
     aws_s3 as s3,
-    aws_s3_deployment as s3_deployment,
     aws_iam as iam,
 )
 from elk_stack.custom_resource import CustomResource

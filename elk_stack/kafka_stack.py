@@ -48,6 +48,7 @@ class KafkaStack(core.Stack):
         )
         core.Tag.add(self.kafka_client_security_group, "project", ELK_PROJECT_TAG)
         core.Tag.add(self.kafka_client_security_group, "Name", "kafka_client_sg")
+
         # Open port 22 for SSH
         self.kafka_client_security_group.add_ingress_rule(
             ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(22), "from own public ip",
@@ -63,6 +64,7 @@ class KafkaStack(core.Stack):
         )
         core.Tag.add(self.kafka_security_group, "project", ELK_PROJECT_TAG)
         core.Tag.add(self.kafka_security_group, "Name", "kafka_sg")
+
         # add ingress for kafka security group
         self.kafka_security_group.connections.allow_from(
             self.kafka_security_group, ec2.Port.all_traffic(), "within kafka",
@@ -72,6 +74,7 @@ class KafkaStack(core.Stack):
             ec2.Port.all_traffic(),
             "from kafka client sg",
         )
+
         # ingress for kc sg
         self.kafka_client_security_group.connections.allow_from(
             self.kafka_security_group, ec2.Port.all_traffic(), "from kafka",
@@ -96,6 +99,7 @@ class KafkaStack(core.Stack):
             cluster_name=ELK_PROJECT_TAG,
             kafka_version=ELK_KAFKA_VERSION,
             number_of_broker_nodes=ELK_KAFKA_BROKER_NODES,
+            enhanced_monitoring="DEFAULT"
         )
         core.Tag.add(self.kafka_cluster, "project", ELK_PROJECT_TAG)
 
@@ -168,7 +172,3 @@ class KafkaStack(core.Stack):
     @property
     def get_kafka_client_security_group(self):
         return self.kafka_client_security_group
-    
-    @property
-    def get_kafka_brokerstring(self):
-        return kafka_get_brokers()

@@ -26,8 +26,6 @@ class FilebeatStack(core.Stack):
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
-        print(kafka_stack.get_kafka_brokerstring)
-
         # log generator asset
         log_generator_py = assets.Asset(
             self, "log_generator", path=os.path.join(dirname, "log_generator.py")

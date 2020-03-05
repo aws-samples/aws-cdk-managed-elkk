@@ -13,7 +13,6 @@ from aws_cdk import (
 from elk_stack.constants import (
     ELK_PROJECT_TAG,
     ELK_KEY_PAIR,
-    ELK_REGION,
     ELK_TOPIC,
     ELK_LOGSTASH_INSTANCE,
 )
@@ -79,7 +78,7 @@ class LogstashStack(core.Stack):
                 "$s3_bucket": s3_bucket_name,
                 "$es_endpoint": es_endpoint,
                 "$kafka_brokers": kafka_get_brokers(),
-                "$elk_region": ELK_REGION,
+                "$elk_region": os.environ["CDK_DEFAULT_REGION"],
                 "$elk_topic": ELK_TOPIC,
             },
         )
