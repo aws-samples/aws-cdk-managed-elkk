@@ -9,13 +9,8 @@ from aws_cdk import (
     aws_s3_assets as assets,
 )
 import boto3
-from elk_stack.helpers import file_updated, kafka_get_brokers
-from elk_stack.constants import (
-    ELK_PROJECT_TAG,
-    ELK_KEY_PAIR,
-    ELK_FILEBEAT_INSTANCE,
-    ELK_TOPIC,
-)
+from helpers.functions import file_updated, kafka_get_brokers
+from helpers.constants import constants
 
 dirname = os.path.dirname(__file__)
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
@@ -43,7 +38,7 @@ class FilebeatStack(core.Stack):
         # update filebeat.yml to .asset
         filebeat_yml_asset = file_updated(
             os.path.join(dirname, "filebeat.yml"),
-            {"$kafka_brokers": kafka_brokers, "$elk_topic": ELK_TOPIC,},
+            {"$kafka_brokers": kafka_brokers, "$elk_topic": constants['ELK_TOPIC'],},
         )
         filebeat_yml = assets.Asset(self, "filebeat_yml", path=filebeat_yml_asset)
         elastic_repo = assets.Asset(
@@ -54,16 +49,16 @@ class FilebeatStack(core.Stack):
         fb_instance = ec2.Instance(
             self,
             "filebeat_client",
-            instance_type=ec2.InstanceType(ELK_FILEBEAT_INSTANCE),
+            instance_type=ec2.InstanceType(constants['ELK_FILEBEAT_INSTANCE']),
             machine_image=ec2.AmazonLinuxImage(
                 generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
             ),
             vpc=vpc_stack.get_vpc,
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
-            key_name=ELK_KEY_PAIR,
+            key_name=constants['ELK_KEY_PAIR'],
             security_group=kafka_stack.get_kafka_client_security_group,
         )
-        core.Tag.add(fb_instance, "project", ELK_PROJECT_TAG)
+        core.Tag.add(fb_instance, "project", constants['ELK_PROJECT_TAG'])
         # create policies for ec2 to connect to kafka
         access_kafka_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,

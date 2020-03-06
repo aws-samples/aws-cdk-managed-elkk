@@ -5,12 +5,12 @@ import os
 from aws_cdk import core
 
 # import cdk classes
-from elk_stack.vpc_stack import VpcStack
-from elk_stack.kafka_stack import KafkaStack
-from elk_stack.elastic_stack import ElasticStack
-from elk_stack.logstash_stack import LogstashStack
-from elk_stack.filebeat_stack import FilebeatStack
-from elk_stack.athena_stack import AthenaStack
+from vpc.vpc_stack import VpcStack
+from kafka.kafka_stack import KafkaStack
+from elastic.elastic_stack import ElasticStack
+from logstash.logstash_stack import LogstashStack
+from filebeat.filebeat_stack import FilebeatStack
+from athena.athena_stack import AthenaStack
 
 app = core.App()
 

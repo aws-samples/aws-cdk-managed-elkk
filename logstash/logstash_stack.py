@@ -10,13 +10,8 @@ from aws_cdk import (
     aws_ecr_assets as ecr_assets,
     aws_logs as logs,
 )
-from elk_stack.constants import (
-    ELK_PROJECT_TAG,
-    ELK_KEY_PAIR,
-    ELK_TOPIC,
-    ELK_LOGSTASH_INSTANCE,
-)
-from elk_stack.helpers import file_updated, kafka_get_brokers
+from helpers.constants import constants
+from helpers.functions import file_updated, kafka_get_brokers
 import boto3
 from botocore.exceptions import ClientError
 
@@ -79,7 +74,7 @@ class LogstashStack(core.Stack):
                 "$es_endpoint": es_endpoint,
                 "$kafka_brokers": kafka_get_brokers(),
                 "$elk_region": os.environ["CDK_DEFAULT_REGION"],
-                "$elk_topic": ELK_TOPIC,
+                "$elk_topic": constants["ELK_TOPIC"],
             },
         )
         logstash_conf = assets.Asset(self, "logstash.conf", path=logstash_conf_asset,)
@@ -92,7 +87,7 @@ class LogstashStack(core.Stack):
             description="logstash security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(logstash_security_group, "project", ELK_PROJECT_TAG)
+        core.Tag.add(logstash_security_group, "project", constants["ELK_PROJECT_TAG"])
         core.Tag.add(logstash_security_group, "Name", "logstash_sg")
 
         # Open port 22 for SSH
@@ -103,7 +98,7 @@ class LogstashStack(core.Stack):
         # get security group for kafka
         ec2client = boto3.client("ec2")
         security_groups = ec2client.describe_security_groups(
-            Filters=[{"Name": "tag-value", "Values": [ELK_PROJECT_TAG,]},],
+            Filters=[{"Name": "tag-value", "Values": [constants["ELK_PROJECT_TAG"],]},],
         )
 
         # if kafka sg does not exist ... don't add it
@@ -180,16 +175,16 @@ class LogstashStack(core.Stack):
             logstash_instance = ec2.Instance(
                 self,
                 "logstash_client",
-                instance_type=ec2.InstanceType(ELK_LOGSTASH_INSTANCE),
+                instance_type=ec2.InstanceType(constants['ELK_LOGSTASH_INSTANCE']),
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
                 vpc=vpc_stack.get_vpc,
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
-                key_name=ELK_KEY_PAIR,
+                key_name=constants['ELK_KEY_PAIR'],
                 security_group=logstash_security_group,
             )
-            core.Tag.add(logstash_instance, "project", ELK_PROJECT_TAG)
+            core.Tag.add(logstash_instance, "project", constants['ELK_PROJECT_TAG'])
 
             # add access to the file assets
             logstash_yml.grant_read(logstash_instance)
@@ -265,7 +260,7 @@ class LogstashStack(core.Stack):
             logstash_cluster = ecs.Cluster(
                 self, "logstash_cluster", vpc=vpc_stack.get_vpc
             )
-            core.Tag.add(logstash_cluster, "project", ELK_PROJECT_TAG)
+            core.Tag.add(logstash_cluster, "project", constants['ELK_PROJECT_TAG'])
 
             # the task
             logstash_task = ecs.FargateTaskDefinition(

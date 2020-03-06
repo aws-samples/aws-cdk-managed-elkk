@@ -1,7 +1,7 @@
 # modules
 import os
 import boto3
-from constants import ELK_PROJECT_TAG
+from helpers.constants import constants
 
 # set boto3 client for amazon managged kafka
 kafkaclient = boto3.client("kafka")
@@ -31,7 +31,7 @@ def kafka_get_arn() -> str:
         return [
             clstr["ClusterArn"]
             for clstr in kafka_clusters["ClusterInfoList"]
-            if clstr["Tags"]["project"] == ELK_PROJECT_TAG
+            if clstr["Tags"]["project"] == constants["ELK_PROJECT_TAG"]
         ][0]
     except IndexError:
         return ""
@@ -64,5 +64,7 @@ def elastic_get_domain() -> str:
 
 def elastic_get_endpoint() -> str:
     """ get elastic endpoint using elastic domain """
-    es_endpoint = esclient.describe_elasticsearch_domain(DomainName=elastic_get_domain())
+    es_endpoint = esclient.describe_elasticsearch_domain(
+        DomainName=elastic_get_domain()
+    )
     es_endpoint = es_endpoint["DomainStatus"]["Endpoints"]["vpc"]

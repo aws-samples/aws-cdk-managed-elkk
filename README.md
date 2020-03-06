@@ -76,42 +76,6 @@ chmod 400 $yourkeypair.pem
 mv $yourkeypair.pem $HOME/.ssh/$yourkeypair.pem
 ```
 
-### Set the configuration
-
-Create a file in the project "elk_stack" folder as "constants.py"  
-
-Create the file content as below file with the correct region and account, ensure that the keypair name matches that used previously.
-
-```python
-#!/usr/bin/env python3
-
-# project level constants
-ELK_PROJECT_TAG = "elk-stack"
-ELK_KEY_PAIR = "yourkeypair" # do not include the .pem in the keypair name here
-
-# kafka settings
-ELK_KAFKA_DOWNLOAD_VERSION = "kafka_2.12-2.4.0"
-ELK_KAFKA_BROKER_NODES = 3
-ELK_KAFKA_VERSION = "2.3.1"
-ELK_KAFKA_INSTANCE_TYPE = "kafka.m5.large"
-ELK_TOPIC = "elkstacktopic"
-ELK_KAFKA_CLIENT_INSTANCE = "t2.xlarge"
-
-# filebeat
-ELK_FILEBEAT_INSTANCE = "t2.xlarge"
-
-# elastic
-ELK_ELASTIC_CLIENT_INSTANCE = "t2.xlarge"
-ELK_ELASTIC_MASTER_COUNT = 3
-ELK_ELASTIC_MASTER_INSTANCE = "r5.large.elasticsearch"
-ELK_ELASTIC_INSTANCE_COUNT = 3
-ELK_ELASTIC_INSTANCE = "r5.large.elasticsearch"
-ELK_ELASTIC_VERSION = "7.1"
-
-# logstash
-ELK_LOGSTASH_INSTANCE = "t2.xlarge"
-```
-
 Run all terminal commonds from the project root directory.
 
 ### Boostrap the CDK
@@ -155,7 +119,7 @@ From a terminal window connect to the Kafka client instance to create a producer
 
 ```bash
 # get the instance public dns
-kafka_client_dns=`aws ec2 describe-instances --filter file://kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
+kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
 # use the public dns to connect to the instance
 ssh ec2-user@$kafka_client_dns
 ```
@@ -177,7 +141,7 @@ From a new terminal window connect to the Kafka client instance to create consum
 
 ```bash
 # get the instance public dns
-kafka_client_dns=`aws ec2 describe-instances --filter file://kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
+kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
 # use the public dns to connect to the instance
 ssh ec2-user@$kafka_client_dns
 ```
@@ -217,7 +181,7 @@ From a new terminal window connect to the Filebeat instance to create create dum
 
 ```bash
 # get the filebeat instance public dns
-filebeat_dns=`aws ec2 describe-instances --filter file://filebeat_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $filebeat_dns
+filebeat_dns=`aws ec2 describe-instances --filter file://filebeat/filebeat_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $filebeat_dns
 # use the public dns to connect to the filebeat instance
 ssh ec2-user@$filebeat_dns
 ```
@@ -251,7 +215,7 @@ Connect to the EC2 instance using a terminal window:
 
 ```bash
 # get the elastic instance public dns
-elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
+elastic_dns=`aws ec2 describe-instances --filter file://elastic/elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
 # use the public dns to connect to the elastic instance
 ssh ec2-user@$elastic_dns
 ```
@@ -277,13 +241,13 @@ Create an SSH tunnel to Kibana.
 
 ```bash
 # get the elastic instance public dns
-elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
+elastic_dns=`aws ec2 describe-instances --filter file://elastic/elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
 # get the elastic domain
 elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $elastic_domain
 # get the elastic endpoint
 elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # create the tunnel
-ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443
+ssh ec2-user@$elastic_dns -N -L *:9200:$elastic_endpoint:443 -4
 ```
 
 Leave the tunnel terminal window open.
@@ -338,7 +302,7 @@ Connect to the Logstash Instance using a terminal window:
 
 ```bash
 # get the logstash instance public dns
-logstash_dns=`aws ec2 describe-instances --filter file://logstash_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $logstash_dns
+logstash_dns=`aws ec2 describe-instances --filter file://logstash/logstash_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $logstash_dns
 # use the public dns to connect to the logstash instance
 ssh ec2-user@$logstash_dns
 ```

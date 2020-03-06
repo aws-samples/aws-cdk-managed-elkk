@@ -143,5 +143,4 @@ package-lock.json
 cdk.out/
 
 # for elkk
-constants.py
 *.asset
