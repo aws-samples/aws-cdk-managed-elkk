@@ -8,6 +8,7 @@ from aws_cdk import (
 )
 import os
 from helpers.constants import constants
+from helpers.functions import ensure_service_linked_role
 import urllib.request
 
 dirname = os.path.dirname(__file__)
@@ -25,6 +26,9 @@ class ElasticStack(core.Stack):
         **kwargs,
     ) -> None:
         super().__init__(scope, id, **kwargs)
+
+        # ensure that the service linked role exists
+        ensure_service_linked_role("es.amazonaws.com")
 
         # security group for elastic client
         elastic_client_security_group = ec2.SecurityGroup(

@@ -14,7 +14,7 @@ from aws_cdk import (
 
 # get constants
 from helpers.constants import constants
-from helpers.functions import file_updated, kafka_get_brokers
+from helpers.functions import file_updated, kafka_get_brokers, ensure_service_linked_role
 
 dirname = os.path.dirname(__file__)
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
@@ -25,6 +25,9 @@ class KafkaStack(core.Stack):
         self, scope: core.Construct, id: str, vpc_stack, client: bool = True, **kwargs
     ) -> None:
         super().__init__(scope, id, **kwargs)
+
+        # ensure that the service linked role exists
+        ensure_service_linked_role("kafka.amazonaws.com")
 
         # create assets
         client_properties = assets.Asset(

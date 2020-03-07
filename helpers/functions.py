@@ -1,12 +1,15 @@
 # modules
 import os
 import boto3
+from botocore.exceptions import ClientError
 from helpers.constants import constants
 
 # set boto3 client for amazon managged kafka
 kafkaclient = boto3.client("kafka")
 # set the boto3 client for amazon elasticsearch
 esclient = boto3.client("es")
+# set the boto3 client for amazon iam
+iamclient = boto3.client("iam")
 
 # helper to create updated assets
 def file_updated(file_name: str = "", updates: dict = {}):
@@ -22,6 +25,22 @@ def file_updated(file_name: str = "", updates: dict = {}):
         f.write(filedata)
     # return name of updated file
     return f"{file_name}.asset"
+
+
+def ensure_service_linked_role(service_name: str):
+    """ create the serviced linked role if it doesn't exist for a service """
+    try:
+        iamclient.create_service_linked_role(AWSServiceName=service_name)
+    except ClientError as err:
+        if (
+            err.response["Error"]["Code"] == "InvalidInput"
+            and "has been taken in this account" in err.response["Error"]["Message"]
+        ):
+            return 0
+        else:
+            print(f"Unexpectedd error: {err}")
+            return 1
+    return 0
 
 
 def kafka_get_arn() -> str:
