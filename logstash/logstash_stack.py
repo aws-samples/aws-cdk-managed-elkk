@@ -10,14 +10,8 @@ from aws_cdk import (
     aws_ecr_assets as ecr_assets,
     aws_logs as logs,
 )
-from elk_stack.constants import (
-    ELK_PROJECT_TAG,
-    ELK_KEY_PAIR,
-    ELK_REGION,
-    ELK_TOPIC,
-    ELK_LOGSTASH_INSTANCE,
-)
-from elk_stack.helpers import file_updated
+from helpers.constants import constants
+from helpers.functions import file_updated, kafka_get_brokers
 import boto3
 from botocore.exceptions import ClientError
 
@@ -44,7 +38,7 @@ class LogstashStack(core.Stack):
             s3_bucket_name = [
                 bkt["Name"]
                 for bkt in s3_bucket_list["Buckets"]
-                if "elk-athena-" in bkt["Name"]
+                if "elkk-athena-" in bkt["Name"]
             ][0]
         except IndexError:
             s3_bucket_name = ""
@@ -56,26 +50,12 @@ class LogstashStack(core.Stack):
             es_domain = [
                 dom["DomainName"]
                 for dom in es_domains["DomainNames"]
-                if "elk-" in dom["DomainName"]
+                if "elkk-" in dom["DomainName"]
             ][0]
             es_endpoint = esclient.describe_elasticsearch_domain(DomainName=es_domain)
             es_endpoint = es_endpoint["DomainStatus"]["Endpoints"]["vpc"]
         except IndexError:
             es_endpoint = ""
-
-        # get kakfa brokers
-        kafkaclient = boto3.client("kafka")
-        kafka_clusters = kafkaclient.list_clusters()
-        try:
-            kafka_arn = [
-                kc["ClusterArn"]
-                for kc in kafka_clusters["ClusterInfoList"]
-                if "elk-" in kc["ClusterName"]
-            ][0]
-            kafka_brokers = kafkaclient.get_bootstrap_brokers(ClusterArn=kafka_arn)
-            kafka_brokers = kafka_brokers["BootstrapBrokerString"]
-        except IndexError:
-            kafka_brokers = ""
 
         # assets for logstash stack
         logstash_yml = assets.Asset(
@@ -86,14 +66,15 @@ class LogstashStack(core.Stack):
         )
 
         # update conf file to .asset
+        # kafka brokerstring does not need reformatting
         logstash_conf_asset = file_updated(
             os.path.join(dirname, "logstash.conf"),
             {
                 "$s3_bucket": s3_bucket_name,
                 "$es_endpoint": es_endpoint,
-                "$kafka_brokers": kafka_brokers,
-                "$elk_region": ELK_REGION,
-                "$elk_topic": ELK_TOPIC,
+                "$kafka_brokers": kafka_get_brokers(),
+                "$elkk_region": os.environ["CDK_DEFAULT_REGION"],
+                "$elkk_topic": constants["ELKK_TOPIC"],
             },
         )
         logstash_conf = assets.Asset(self, "logstash.conf", path=logstash_conf_asset,)
@@ -106,7 +87,7 @@ class LogstashStack(core.Stack):
             description="logstash security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(logstash_security_group, "project", ELK_PROJECT_TAG)
+        core.Tag.add(logstash_security_group, "project", constants["PROJECT_TAG"])
         core.Tag.add(logstash_security_group, "Name", "logstash_sg")
 
         # Open port 22 for SSH
@@ -117,7 +98,7 @@ class LogstashStack(core.Stack):
         # get security group for kafka
         ec2client = boto3.client("ec2")
         security_groups = ec2client.describe_security_groups(
-            Filters=[{"Name": "tag-value", "Values": [ELK_PROJECT_TAG,]},],
+            Filters=[{"Name": "tag-value", "Values": [constants["PROJECT_TAG"],]},],
         )
 
         # if kafka sg does not exist ... don't add it
@@ -194,16 +175,16 @@ class LogstashStack(core.Stack):
             logstash_instance = ec2.Instance(
                 self,
                 "logstash_client",
-                instance_type=ec2.InstanceType(ELK_LOGSTASH_INSTANCE),
+                instance_type=ec2.InstanceType(constants["LOGSTASH_INSTANCE"]),
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
                 vpc=vpc_stack.get_vpc,
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
-                key_name=ELK_KEY_PAIR,
+                key_name=constants["KEY_PAIR"],
                 security_group=logstash_security_group,
             )
-            core.Tag.add(logstash_instance, "project", ELK_PROJECT_TAG)
+            core.Tag.add(logstash_instance, "project", constants["PROJECT_TAG"])
 
             # add access to the file assets
             logstash_yml.grant_read(logstash_instance)
@@ -272,17 +253,14 @@ class LogstashStack(core.Stack):
         if logstash_fargate:
             # docker image for logstash
             logstash_image_asset = ecr_assets.DockerImageAsset(
-                self,
-                "logstash_image_asset",
-                directory=dirname,
-                file="Dockerfile"
+                self, "logstash_image_asset", directory=dirname, file="Dockerfile"
             )
 
             # create the fargate cluster
             logstash_cluster = ecs.Cluster(
                 self, "logstash_cluster", vpc=vpc_stack.get_vpc
             )
-            core.Tag.add(logstash_cluster, "project", ELK_PROJECT_TAG)
+            core.Tag.add(logstash_cluster, "project", constants["PROJECT_TAG"])
 
             # the task
             logstash_task = ecs.FargateTaskDefinition(
@@ -292,9 +270,7 @@ class LogstashStack(core.Stack):
             # add container to the task
             logstash_task.add_container(
                 "logstash_image",
-                image=ecs.ContainerImage.from_docker_image_asset(
-                    logstash_image_asset
-                ),
+                image=ecs.ContainerImage.from_docker_image_asset(logstash_image_asset),
                 logging=ecs.LogDrivers.aws_logs(
                     stream_prefix="elkk", log_group=logstash_logs
                 ),

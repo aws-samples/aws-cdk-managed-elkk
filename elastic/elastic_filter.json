@@ -2,7 +2,7 @@
     {
         "Name": "tag:project",
         "Values": [
-            "elk-stack"
+            "elkk-stack"
         ]
     },
     {
@@ -14,7 +14,7 @@
     {
         "Name": "tag:aws:cloudformation:stack-name",
         "Values": [
-            "elk-kafka"
+            "elkk-elastic"
         ]
     }
 ]

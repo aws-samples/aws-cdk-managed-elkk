@@ -1,4 +1,4 @@
-# Building an ELKK Stack 
+# Amazon Managed ELKK
  
 This repository contains an implimentation example of a managed ELKK stack using the AWS Cloud Development Kit. This example uses Python.
 
@@ -7,7 +7,7 @@ This repository contains an implimentation example of a managed ELKK stack using
 2. [Prerequisites](#prerequisites)
 3. [Amazon Virtual Private Cloud](#vpc)
 4. [Amazon Managed Streaming for Apache Kafka](#kafka)
-5. [Filebeats](#filebeats)
+5. [Filebeat](#filebeat)
 6. [Amazon Elasticsearch Service](#elastic)
 7. [Amazon Athena](#athena)
 8. [Logstash](#logstash)
@@ -19,7 +19,7 @@ The ELKK stack is a pipeline of services to support real-time reporting and anal
 
 ### Components
 
-Filebeat agents will be used to collect the logs from the application/host systems, and publish the logs to Amazon MSK. Filebeats agents are deployed on an Amazon EC2 instance to simulate log generation.
+Filebeat agents will be used to collect the logs from the application/host systems, and publish the logs to Amazon MSK. Filebeat agents are deployed on an Amazon EC2 instance to simulate log generation.
 
 Amazon Managed Streaming for Kafka (Amazon MSK) is used as a buffering layer to handle the collection of logs and manage the back-pressure from downstream components in the architecture. The buffering layer will provide recoverability and extensibility in the platform.
 
@@ -38,12 +38,13 @@ Amazon Athena supports SQL queries against log data stored in Amazon S3.
 
 The following tools are required to deploy this Amazon Managed ELKK stack.
 
-AWS CDK - https://docs.aws.amazon.com/cdk/index.html  
+AWS CDK - https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html
 AWS CLI - https://aws.amazon.com/cli/  
 Git -  https://git-scm.com/downloads  
 python (3.6 or later) - https://www.python.org/downloads/  
-Git Bash for Windows - https://gitforwindows.org/ (windows only)  
 Docker - https://www.docker.com/
+
+Terminal commands in this README are designed for a bash client.
 
 ### Set up the Environment
 
@@ -51,14 +52,13 @@ Clone the Git repository, create the python environment and install the python d
 
 ```bash
 # clone the repo
-git clone https://github.com/fmcmac/elk-stack.git
+git clone https://github.com/fmcmac/elk-stack.git managed_elkk
 # move to directory
-cd elk-stack
+cd managed_elkk
 # create the virtual environment
 python -m venv .env
 # activate the virtual environment
-(MacOs) source .env/bin/activate
-(Windows) .env\Scripts\activate.bat
+source .env/bin/activate
 # download requirements
 pip install -r requirements.txt
 ```
@@ -66,60 +66,15 @@ pip install -r requirements.txt
 Create the EC2 SSH key pair allowing connections to Amazon EC2 instances.
 
 ```bash
-# name the key pair
-yourkeypair="yourkeypair"
-yourregion="yourregion"
 # create the key pair
 aws ec2 create-key-pair --key-name $yourkeypair --query 'KeyMaterial' --output text > $yourkeypair.pem --region $yourregion
 # update key_pair permissions
 chmod 400 $yourkeypair.pem
 # move key_pair to .ssh
 mv $yourkeypair.pem $HOME/.ssh/$yourkeypair.pem
-# add ssh key to keychain
-ssh-add ~/.ssh/$yourkeypair.pem
 ```
 
-### Set the configuration
-
-Create a file in the project "elk_stack" folder as "constants.py"  
-
-Create the file content as below file with the correct region and account, ensure that the keypair name matches that used previously.
-
-```python
-#!/usr/bin/env python3
-
-# project level constants
-ELK_PROJECT_TAG = "elk-stack"
-ELK_KEY_PAIR = "yourkeypair"
-ELK_REGION = "yourregion"
-ELK_ACCOUNT = "youraccount"
-
-# kafka settings
-ELK_KAFKA_DOWNLOAD_VERSION = "kafka_2.12-2.4.0"
-ELK_KAFKA_BROKER_NODES = 3
-ELK_KAFKA_VERSION = "2.3.1"
-ELK_KAFKA_INSTANCE_TYPE = "kafka.m5.large"
-ELK_TOPIC = "elkstacktopic"
-ELK_KAFKA_CLIENT_INSTANCE = "t2.xlarge"
-
-# filebeat
-ELK_FILEBEAT_INSTANCE = "t2.xlarge"
-
-# elastic
-ELK_ELASTIC_CLIENT_INSTANCE = "t2.xlarge"
-ELK_ELASTIC_MASTER_COUNT = 3
-ELK_ELASTIC_MASTER_INSTANCE = "r5.large.elasticsearch"
-ELK_ELASTIC_INSTANCE_COUNT = 3
-ELK_ELASTIC_INSTANCE = "r5.large.elasticsearch"
-ELK_ELASTIC_VERSION = "7.1"
-
-# logstash
-ELK_LOGSTASH_INSTANCE = "t2.xlarge"
-```
-
-Run all terminal comments from the project root directory.
-
-Confirm that the project is correctly set up.
+Run all terminal commonds from the project root directory.
 
 ### Boostrap the CDK
 
@@ -127,7 +82,7 @@ Create the CDK configuration by bootstrapping the CDK.
 
 ```bash
 # bootstrap the cdk
-cdk bootstrap aws://youraccount/$yourregion
+cdk bootstrap aws://$youraccount/$yourregion
 ```
 
 -----
@@ -139,7 +94,7 @@ Use the AWS CDK to deploy an Amazon VPC across multiple availability zones.
 
 ```bash
 # deploy the vpc stack
-cdk deploy elk-vpc
+cdk deploy elkk-vpc
 ```
 
 -----
@@ -151,7 +106,7 @@ Use the AWS CDK to deploy an Amazon MSK Cluster into the VPC.
 
 ```bash
 # deploy the kafka stack
-cdk deploy elk-kafka
+cdk deploy elkk-kafka
 ```
 
 When Client is set to True an Amazon EC2 instance is deployed to interact with the Amazon MSK Cluster. It can take up to 30 minutes for the Amazon MSK cluster to be deployed.
@@ -162,7 +117,7 @@ From a terminal window connect to the Kafka client instance to create a producer
 
 ```bash
 # get the instance public dns
-kafka_client_dns=`aws ec2 describe-instances --filter file://kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
+kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
 # use the public dns to connect to the instance
 ssh ec2-user@$kafka_client_dns
 ```
@@ -184,7 +139,7 @@ From a new terminal window connect to the Kafka client instance to create consum
 
 ```bash
 # get the instance public dns
-kafka_client_dns=`aws ec2 describe-instances --filter file://kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
+kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
 # use the public dns to connect to the instance
 ssh ec2-user@$kafka_client_dns
 ```
@@ -205,26 +160,26 @@ Leave the Kafka consumer window open.
 Messages typed into the Kafka producer window should appear in the Kafka consumer window.  
 
 -----
-## Filebeats <a name=#filebeats></a>
+## Filebeat <a name=#filebeat></a>
 
-To simulate incoming logs for the ELKK cluster Filebeats will be installed on an Amazon EC2 instance. Filebeats is configured to read logs generated by a log generator installed on the EC2 instance and push the logs to the Amazon MSK cluster.
+To simulate incoming logs for the ELKK cluster Filebeat will be installed on an Amazon EC2 instance. Filebeat is configured to read logs generated by a log generator installed on the EC2 instance and push the logs to the Amazon MSK cluster.
 
 Use the AWS CDK to create an Amazon EC2 instance installed with filebeat and a dummy log generator.
 
 ```bash
 # deploy the filebeat stack
-cdk deploy elk-filebeat
+cdk deploy elkk-filebeat
 ```
 
 An Amazon EC2 instance is deployed with Filebeat installed and configured to output to Kafka.  
 
-Wait until 2/2 checks are completed on the Filebeat instance to ensure that the userdata scripts have fully run.  
+Wait until 2/2 checks are completed on the Filebeat instance to ensure that the userdata script as run.
 
-From a new terminal window connect to the Filebeat instance to create create dummy logs:  
+From a new terminal window connect to the Filebeat instance to create create dummy logs:
 
 ```bash
 # get the filebeat instance public dns
-filebeat_dns=`aws ec2 describe-instances --filter file://filebeat_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $filebeat_dns
+filebeat_dns=`aws ec2 describe-instances --filter file://filebeat/filebeat_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $filebeat_dns
 # use the public dns to connect to the filebeat instance
 ssh ec2-user@$filebeat_dns
 ```
@@ -241,24 +196,24 @@ Messages generated by the log generator should appear in the Kafka consumer term
 -----
 ## Amazon Elasticsearch Service <a name=#elastic></a>
 
-The Amazon Elasticsearch Service privides with the Elasticsearch domain and the Kibana dashboards. An EC2 instance is created to interact with the Elasticsearch domain, and can be used to create an SSH tunnel into the VPC for Kibana dashboard viewing.
+The Amazon Elasticsearch Service provides an Elasticsearch domain and Kibana dashboards. The elkk-elastic stack also creats an Amazon EC2 instance to interact with the Elasticsearch domain. The instance can also be used to create an SSH tunnel into the VPC for Kibana dashboard viewing.
 
 ```bash
 # deploy the elastic stack
-cdk deploy elk-elastic
+cdk deploy elkk-elastic
 ```
 
-An Amazon EC2 instance is deployed to interact with the Elasticsearch Domain.   
+An Amazon EC2 instance is deployed to interact with the Amazon Elasticsearch Service domain.
 
-New Elasticsearch take about ten minutes to initialize.  
+New Amazon Elasticsearch Service domains take about ten minutes to initialize.
 
-Wait until 2/2 checks are completed on the Elastic ec2 instance to ensure that the userdata scripts have fully run.  
+Wait until 2/2 checks are completed on the Amazon EC2 instance to ensure that the userdata script has run.
 
-Connect to the Elastic Instance using a terminal window:  
+Connect to the EC2 instance using a terminal window:
 
 ```bash
 # get the elastic instance public dns
-elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
+elastic_dns=`aws ec2 describe-instances --filter file://elastic/elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
 # use the public dns to connect to the elastic instance
 ssh ec2-user@$elastic_dns
 ```
@@ -284,13 +239,13 @@ Create an SSH tunnel to Kibana.
 
 ```bash
 # get the elastic instance public dns
-elastic_dns=`aws ec2 describe-instances --filter file://elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
+elastic_dns=`aws ec2 describe-instances --filter file://elastic/elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
 # get the elastic domain
-elastic_domain=`aws es list-domain-names --region us-east-1 --output text --query '*'` && echo $elastic_domain
+elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $elastic_domain
 # get the elastic endpoint
 elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # create the tunnel
-ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443
+ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443 -4
 ```
 
 Leave the tunnel terminal window open.
@@ -304,7 +259,7 @@ Amazon Simple Storage Service is used to storage logs for longer term storage. A
 
 ```bash
 # deploy the athena stack
-cdk deploy elk-athena
+cdk deploy elkk-athena
 ```
 
 -----
@@ -314,24 +269,27 @@ Logstash is deployed to subsribe to the Kafka topics and output the data into El
 
 Deploy logstash first on an Amazon EC2 instance.
 
-Check the app.py file and verify that the elk-logstash stack is initially set to create logstash on ec2 and not on fargate.
+Check the app.py file and verify that the elkk-logstash stack is initially set to create logstash on ec2 and not on fargate.
 
 ```python
 # logstash stack
 logstash_stack = LogstashStack(
     app,
-    "elk-logstash",
+    "elkk-logstash",
     vpc_stack,
     logstash_ec2=True,
     logstash_fargate=False,
-    env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
+    env=core.Environment(
+        account=os.environ["CDK_DEFAULT_ACCOUNT"],
+        region=os.environ["CDK_DEFAULT_ACCOUNT"],
+    ),
 )
 ```
 
-When we deploy the elk-stack we will be deploying logstash on ec2.
+When we deploy the elkk-stack we will be deploying logstash on ec2.
 
 ```bash
-cdk deploy elk-logstash
+cdk deploy elkk-logstash
 ```
 
 An Amazon EC2 instance is deployed with Logstash installed and configured with an input from Kafka and output to Elasticsearch and s3.
@@ -342,7 +300,7 @@ Connect to the Logstash Instance using a terminal window:
 
 ```bash
 # get the logstash instance public dns
-logstash_dns=`aws ec2 describe-instances --filter file://logstash_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $logstash_dns
+logstash_dns=`aws ec2 describe-instances --filter file://logstash/logstash_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $logstash_dns
 # use the public dns to connect to the logstash instance
 ssh ec2-user@$logstash_dns
 ```
@@ -358,7 +316,7 @@ service logstash status -l
 service logstash start
 ```
 
-In the Filebeats Instance generate new logfiles
+In the Filebeat Instance generate new logfiles
 
 ```bash
 # geneate new logs
@@ -371,29 +329,32 @@ Navigate to s3 to view the files pushed to s3.
 
 Logstash can be deployed into containers or virtual machines. To deploy logstash on containers update the logstash deployment from Amazon ec2 to AWS Fargate.
 
-Update the app.py file and verify that the elk-logstash stack is set to fargate and not ec2.
+Update the app.py file and verify that the elkk-logstash stack is set to fargate and not ec2.
 
 ```python
 # logstash stack
 logstash_stack = LogstashStack(
     app,
-    "elk-logstash",
+    "elkk-logstash",
     vpc_stack,
     logstash_ec2=False,
     logstash_fargate=True,
-    env=core.Environment(region=ELK_REGION, account=ELK_ACCOUNT),
+    env=core.Environment(
+        account=os.environ["CDK_DEFAULT_ACCOUNT"],
+        region=os.environ["CDK_DEFAULT_ACCOUNT"],
+    ),
 )
 ```
 
 Deploy the updated stack, terminating the Logstash EC2 instance and creating a Logstash service on AWS Fargate.
 
 ```bash
-cdk deploy elk-logstash
+cdk deploy elkk-logstash
 ```
 
 The logstash ec2 instance will be terminated and an AWS Fargate cluster will be created. Logstash will be deployed as containerized tasks.
 
-In the Filebeats Instance generate new logfiles.
+In the Filebeat Instance generate new logfiles.
 
 ```bash
 # geneate new logs
@@ -407,10 +368,10 @@ Navigat to s3 to view the files pushed into s3.
 -----
 ## Cleanup <a name=#cleanup></a>
 
-To clean up the stacks... destroy the elk-vpc stack, all other stacks will be torn down due to dependancies. 
+To clean up the stacks... destroy the elkk-vpc stack, all other stacks will be torn down due to dependancies. 
 
 Cloudwatch logs will need to be separately removed.
 
 ```bash
-cdk destroy elk-vpc
+cdk destroy elkk-vpc
 ```

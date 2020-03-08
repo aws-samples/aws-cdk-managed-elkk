@@ -2,11 +2,10 @@
 from aws_cdk import (
     core,
     aws_s3 as s3,
-    aws_s3_deployment as s3_deployment,
     aws_iam as iam,
 )
-from elk_stack.custom_resource import CustomResource
-from elk_stack.constants import ELK_PROJECT_TAG, ELK_TOPIC
+from helpers.custom_resource import CustomResource
+from helpers.constants import constants
 import os
 
 # set path
@@ -26,17 +25,22 @@ class AthenaStack(core.Stack):
             public_read_access=False,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy=core.RemovalPolicy.DESTROY,
-            lifecycle_rules=[s3.LifecycleRule(
-                # delete the files after 1800 days (5 years)
-                expiration=core.Duration.days(1800),
-                transitions=[
-                    # move files into glacier after 90 days
-                    s3.Transition(transition_after=core.Duration.days(90), storage_class=s3.StorageClass.GLACIER)
-                ],
-            )],
+            lifecycle_rules=[
+                s3.LifecycleRule(
+                    # delete the files after 1800 days (5 years)
+                    expiration=core.Duration.days(1800),
+                    transitions=[
+                        # move files into glacier after 90 days
+                        s3.Transition(
+                            transition_after=core.Duration.days(90),
+                            storage_class=s3.StorageClass.GLACIER,
+                        )
+                    ],
+                )
+            ],
         )
         # tag the bucket
-        core.Tag.add(self.s3_bucket, "project", ELK_PROJECT_TAG)
+        core.Tag.add(self.s3_bucket, "project", constants['PROJECT_TAG'])
 
         # lambda policies
         s3_cleaner_policies = [
