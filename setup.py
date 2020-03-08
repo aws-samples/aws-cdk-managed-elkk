@@ -6,7 +6,7 @@ with open("README.md") as fp:
 
 
 setuptools.setup(
-    name="elk_stack",
+    name="elkk_stack",
     version="0.0.1",
 
     description="Build an ELKK stack with the AWS CDK",
@@ -15,8 +15,8 @@ setuptools.setup(
 
     author="author",
 
-    package_dir={"": "elk_stack"},
-    packages=setuptools.find_packages(where="elk_stack"),
+    package_dir={"": "elkk_stack"},
+    packages=setuptools.find_packages(where="elkk_stack"),
 
     install_requires=[
         "aws-cdk.core",

@@ -43,7 +43,7 @@ class KafkaStack(core.Stack):
             allow_all_outbound=True,
         )
         core.Tag.add(
-            self.kafka_client_security_group, "project", constants["ELK_PROJECT_TAG"]
+            self.kafka_client_security_group, "project", constants["PROJECT_TAG"]
         )
         core.Tag.add(self.kafka_client_security_group, "Name", "kafka_client_sg")
 
@@ -60,7 +60,7 @@ class KafkaStack(core.Stack):
             description="kafka security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(self.kafka_security_group, "project", constants["ELK_PROJECT_TAG"])
+        core.Tag.add(self.kafka_security_group, "project", constants["PROJECT_TAG"])
         core.Tag.add(self.kafka_security_group, "Name", "kafka_sg")
 
         # add ingress for kafka security group
@@ -84,8 +84,8 @@ class KafkaStack(core.Stack):
             "kafka_cluster",
             broker_node_group_info={
                 "clientSubnets": vpc_stack.get_vpc_public_subnet_ids,
-                "instanceType": constants["ELK_KAFKA_INSTANCE_TYPE"],
-                "numberOfBrokerNodes": constants["ELK_KAFKA_BROKER_NODES"],
+                "instanceType": constants["KAFKA_INSTANCE_TYPE"],
+                "numberOfBrokerNodes": constants["KAFKA_BROKER_NODES"],
                 "securityGroups": [self.kafka_security_group.security_group_id],
             },
             encryption_info={
@@ -94,28 +94,28 @@ class KafkaStack(core.Stack):
                     "clientBroker": "PLAINTEXT",
                 },
             },
-            cluster_name=constants["ELK_PROJECT_TAG"],
-            kafka_version=constants["ELK_KAFKA_VERSION"],
-            number_of_broker_nodes=constants["ELK_KAFKA_BROKER_NODES"],
+            cluster_name=constants["PROJECT_TAG"],
+            kafka_version=constants["KAFKA_VERSION"],
+            number_of_broker_nodes=constants["KAFKA_BROKER_NODES"],
             enhanced_monitoring="DEFAULT",
         )
-        core.Tag.add(self.kafka_cluster, "project", constants["ELK_PROJECT_TAG"])
+        core.Tag.add(self.kafka_cluster, "project", constants["PROJECT_TAG"])
 
         # instance for kafka client
         if client == True:
             kafka_client_instance = ec2.Instance(
                 self,
                 "kafka_client",
-                instance_type=ec2.InstanceType(constants["ELK_KAFKA_CLIENT_INSTANCE"]),
+                instance_type=ec2.InstanceType(constants["KAFKA_CLIENT_INSTANCE"]),
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
                 vpc=vpc_stack.get_vpc,
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
-                key_name=constants["ELK_KEY_PAIR"],
+                key_name=constants["KEY_PAIR"],
                 security_group=self.kafka_client_security_group,
             )
-            core.Tag.add(kafka_client_instance, "project", constants["ELK_PROJECT_TAG"])
+            core.Tag.add(kafka_client_instance, "project", constants["PROJECT_TAG"])
             # needs kafka cluster to be available
             kafka_client_instance.node.add_dependency(self.kafka_cluster)
             # create policies for ec2 to connect to kafka
@@ -144,17 +144,17 @@ class KafkaStack(core.Stack):
                 # set cli default region
                 f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
                 # install kakfa
-                f'wget https://www-us.apache.org/dist/kafka/{constants["ELK_KAFKA_DOWNLOAD_VERSION"].split("-")[-1]}/{constants["ELK_KAFKA_DOWNLOAD_VERSION"]}.tgz',
-                f"tar -xvf {constants['ELK_KAFKA_DOWNLOAD_VERSION']}.tgz",
-                f"mv {constants['ELK_KAFKA_DOWNLOAD_VERSION']} /opt",
-                f"rm {constants['ELK_KAFKA_DOWNLOAD_VERSION']}.tgz",
+                f'wget https://www-us.apache.org/dist/kafka/{constants["KAFKA_DOWNLOAD_VERSION"].split("-")[-1]}/{constants["KAFKA_DOWNLOAD_VERSION"]}.tgz',
+                f"tar -xvf {constants['KAFKA_DOWNLOAD_VERSION']}.tgz",
+                f"mv {constants['KAFKA_DOWNLOAD_VERSION']} /opt",
+                f"rm {constants['KAFKA_DOWNLOAD_VERSION']}.tgz",
                 # move client.properties to correct location
-                f"mv -f /home/ec2-user/client.properties /opt/{constants['ELK_KAFKA_DOWNLOAD_VERSION']}/bin/client.properties",
+                f"mv -f /home/ec2-user/client.properties /opt/{constants['KAFKA_DOWNLOAD_VERSION']}/bin/client.properties",
                 # create the topic, if already exists capture error message
-                "kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn",
-                "kafka_zookeeper=`aws kafka describe-cluster --cluster-arn $kafka_arn --output text --query 'ClusterInfo.ZookeeperConnectString'` && echo $kafka_zookeeper",
+                f"kafka_arn=`aws kafka list-clusters --region {core.Aws.REGION} --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn",
+                f"kafka_zookeeper=`aws kafka describe-cluster --cluster-arn $kafka_arn --region {core.Aws.REGION} --output text --query 'ClusterInfo.ZookeeperConnectString'` && echo $kafka_zookeeper",
                 # get the zookeeper
-                f"make_topic=`/opt/{constants['ELK_KAFKA_DOWNLOAD_VERSION']}/bin/kafka-topics.sh --create --zookeeper $kafka_zookeeper --replication-factor 3 --partitions 1 --topic {constants['ELK_TOPIC']} 2>&1`",
+                f"make_topic=`/opt/{constants['KAFKA_DOWNLOAD_VERSION']}/bin/kafka-topics.sh --create --zookeeper $kafka_zookeeper --replication-factor 3 --partitions 1 --topic {constants['ELKK_TOPIC']} 2>&1`",
                 "echo $make_topic",
                 # signal build is done
                 f"/opt/aws/bin/cfn-signal --resource {kafka_client_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",

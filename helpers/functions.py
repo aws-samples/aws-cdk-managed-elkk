@@ -44,13 +44,13 @@ def ensure_service_linked_role(service_name: str):
 
 
 def kafka_get_arn() -> str:
-    """ get the arn for the kakfa cluster startingwith elk- """
+    """ get the arn for the kakfa cluster startingwith elkk- """
     kafka_clusters = kafkaclient.list_clusters()
     try:
         return [
             clstr["ClusterArn"]
             for clstr in kafka_clusters["ClusterInfoList"]
-            if clstr["Tags"]["project"] == constants["ELK_PROJECT_TAG"]
+            if clstr["Tags"]["project"] == constants["PROJECT_TAG"]
         ][0]
     except IndexError:
         return ""
@@ -58,8 +58,15 @@ def kafka_get_arn() -> str:
 
 def kafka_get_brokers() -> str:
     """ get msk brokers from the kafka arn """
-    kafka_brokers = kafkaclient.get_bootstrap_brokers(ClusterArn=kafka_get_arn())
-    return kafka_brokers["BootstrapBrokerString"]
+    try:
+        kafka_brokers = kafkaclient.get_bootstrap_brokers(ClusterArn=kafka_get_arn())
+        return kafka_brokers["BootstrapBrokerString"]
+    except ClientError as err:
+        if err.response["Error"]["Message"] == "Missing required request parameters: [clusterArn]":
+            return ""
+        else:
+            print(f"Unexpectedd error: {err}")
+    return ""
     # return f'''"{kafka_brokers.replace(",", '", "')}"'''
 
 
@@ -75,7 +82,7 @@ def elastic_get_domain() -> str:
         return [
             dom["DomainName"]
             for dom in es_domains["DomainNames"]
-            if "elk-" in dom["DomainName"]
+            if "elkk-" in dom["DomainName"]
         ][0]
     except IndexError:
         return ""

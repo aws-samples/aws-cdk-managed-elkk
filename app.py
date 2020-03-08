@@ -17,7 +17,7 @@ app = core.App()
 # create the vpc
 vpc_stack = VpcStack(
     app,
-    "elk-vpc",
+    "elkk-vpc",
     env=core.Environment(
         account=os.environ["CDK_DEFAULT_ACCOUNT"],
         region=os.environ["CDK_DEFAULT_REGION"],
@@ -27,7 +27,7 @@ vpc_stack = VpcStack(
 # create the kafka cluster
 kafka_stack = KafkaStack(
     app,
-    "elk-kafka",
+    "elkk-kafka",
     vpc_stack,
     client=True,
     env=core.Environment(
@@ -40,7 +40,7 @@ kafka_stack.add_dependency(vpc_stack)
 # filebeat stack (filebeat on ec2)
 filebeat_stack = FilebeatStack(
     app,
-    "elk-filebeat",
+    "elkk-filebeat",
     vpc_stack,
     kafka_stack,
     env=core.Environment(
@@ -53,7 +53,7 @@ filebeat_stack.add_dependency(kafka_stack)
 # create the elasticsearch domain
 elastic_stack = ElasticStack(
     app,
-    "elk-elastic",
+    "elkk-elastic",
     vpc_stack,
     client=True,
     env=core.Environment(
@@ -65,7 +65,7 @@ elastic_stack.add_dependency(vpc_stack)
 
 # athena
 athena_stack = AthenaStack(
-    app, "elk-athena",
+    app, "elkk-athena",
     env=core.Environment(
         account=os.environ["CDK_DEFAULT_ACCOUNT"],
         region=os.environ["CDK_DEFAULT_REGION"],
@@ -76,7 +76,7 @@ athena_stack.add_dependency(vpc_stack)
 # logstash stack
 logstash_stack = LogstashStack(
     app,
-    "elk-logstash",
+    "elkk-logstash",
     vpc_stack,
     logstash_ec2=False,
     logstash_fargate=True,

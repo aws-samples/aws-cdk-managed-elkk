@@ -39,7 +39,7 @@ class ElasticStack(core.Stack):
             allow_all_outbound=True,
         )
         core.Tag.add(
-            elastic_client_security_group, "project", constants["ELK_PROJECT_TAG"]
+            elastic_client_security_group, "project", constants["PROJECT_TAG"]
         )
         core.Tag.add(elastic_client_security_group, "Name", "elastic_client_sg")
         # Open port 22 for SSH
@@ -59,7 +59,7 @@ class ElasticStack(core.Stack):
             description="elastic security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(elastic_security_group, "project", constants["ELK_PROJECT_TAG"])
+        core.Tag.add(elastic_security_group, "project", constants["PROJECT_TAG"])
         core.Tag.add(elastic_security_group, "Name", "elastic_sg")
 
         # ingress for elastic from self
@@ -90,15 +90,15 @@ class ElasticStack(core.Stack):
             self,
             "elastic_domain",
             elasticsearch_cluster_config={
-                "dedicatedMasterCount": constants["ELK_ELASTIC_MASTER_COUNT"],
+                "dedicatedMasterCount": constants["ELASTIC_MASTER_COUNT"],
                 "dedicatedMasterEnabled": True,
-                "dedicatedMasterType": constants["ELK_ELASTIC_MASTER_INSTANCE"],
-                "instanceCount": constants["ELK_ELASTIC_INSTANCE_COUNT"],
-                "instanceType": constants["ELK_ELASTIC_INSTANCE"],
+                "dedicatedMasterType": constants["ELASTIC_MASTER_INSTANCE"],
+                "instanceCount": constants["ELASTIC_INSTANCE_COUNT"],
+                "instanceType": constants["ELASTIC_INSTANCE"],
                 "zoneAwarenessConfig": {"availabilityZoneCount": 3},
                 "zoneAwarenessEnabled": True,
             },
-            elasticsearch_version=constants["ELK_ELASTIC_VERSION"],
+            elasticsearch_version=constants["ELASTIC_VERSION"],
             ebs_options={"ebsEnabled": True, "volumeSize": 10},
             vpc_options={
                 "securityGroupIds": [elastic_security_group.security_group_id],
@@ -106,7 +106,7 @@ class ElasticStack(core.Stack):
             },
             access_policies=elastic_document,
         )
-        core.Tag.add(elastic_domain, "project", constants["ELK_PROJECT_TAG"])
+        core.Tag.add(elastic_domain, "project", constants["PROJECT_TAG"])
 
         # instance for elasticsearch
         if client == True:
@@ -114,17 +114,17 @@ class ElasticStack(core.Stack):
                 self,
                 "elastic_client",
                 instance_type=ec2.InstanceType(
-                    constants["ELK_ELASTIC_CLIENT_INSTANCE"]
+                    constants["ELASTIC_CLIENT_INSTANCE"]
                 ),
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
                 vpc=vpc_stack.get_vpc,
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
-                key_name=constants["ELK_KEY_PAIR"],
+                key_name=constants["KEY_PAIR"],
                 security_group=elastic_client_security_group,
             )
-            core.Tag.add(elastic_instance, "project", constants["ELK_PROJECT_TAG"])
+            core.Tag.add(elastic_instance, "project", constants["PROJECT_TAG"])
             # needs elastic domain to be available
             elastic_instance.node.add_dependency(elastic_domain)
             # create policies for ec2 to connect to elastic

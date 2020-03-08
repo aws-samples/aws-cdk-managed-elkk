@@ -40,7 +40,7 @@ class AthenaStack(core.Stack):
             ],
         )
         # tag the bucket
-        core.Tag.add(self.s3_bucket, "project", constants['ELK_PROJECT_TAG'])
+        core.Tag.add(self.s3_bucket, "project", constants['PROJECT_TAG'])
 
         # lambda policies
         s3_cleaner_policies = [

@@ -176,7 +176,7 @@ output.kafka:
   hosts: [ $kafka_brokers ]
  
   # message topic selection + partitioning
-  topic: "$elk_topic"
+  topic: "$elkk_topic"
   # partition.round_robin:
   #   reachable_only: false
 
