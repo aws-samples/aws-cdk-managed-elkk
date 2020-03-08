@@ -52,7 +52,7 @@ Clone the Git repository, create the python environment and install the python d
 
 ```bash
 # clone the repo
-git clone https://github.com/fmcmac/elkk-stack.git managed_elkk
+git clone https://github.com/fmcmac/elk-stack.git managed_elkk
 # move to directory
 cd managed_elkk
 # create the virtual environment
