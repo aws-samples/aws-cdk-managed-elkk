@@ -1,8 +1,10 @@
 # import modules
 import os
 import io
+from pathlib import Path
 
-# import boto3
+import boto3
+from botocore.exceptions import ClientError
 import urllib.request
 from aws_cdk import (
     core,
@@ -12,9 +14,15 @@ from aws_cdk import (
     aws_s3_assets as assets,
 )
 
+kafka = boto3.client("kafka")
+
 # get constants
 from helpers.constants import constants
-from helpers.functions import file_updated, kafka_get_brokers, ensure_service_linked_role
+from helpers.functions import (
+    file_updated,
+    kafka_get_brokers,
+    ensure_service_linked_role,
+)
 
 dirname = os.path.dirname(__file__)
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
@@ -101,6 +109,54 @@ class KafkaStack(core.Stack):
         )
         core.Tag.add(self.kafka_cluster, "project", constants["PROJECT_TAG"])
 
+        # check if configuration is already udateed
+        # get cluster arn
+        kafka_arns = kafka.list_clusters(ClusterNameFilter="elkk-")
+        clstr = [
+            clstr
+            for clstr in kafka_arns["ClusterInfoList"]
+            if clstr["Tags"]["project"] == "elkk-stack"
+        ][0]
+        kafka_arn = clstr["ClusterArn"]
+        # get cluster configuration
+        if clstr['CurrentBrokerSoftwareInfo']['ConfigurationRevision'] != 1:
+            # create the cluster configuration such that auto create topic is true
+            try:
+                kafka_config = kafka.create_configuration(
+                    Description="Elkk Configuration",
+                    KafkaVersions=[constants["KAFKA_VERSION"]],
+                    Name="ElkkConfiguration",
+                    ServerProperties=Path("kafka/configuration.txt").read_text(),
+                )
+            except ClientError as err:
+                if err.response["Error"]["Code"] == "ConflictException":
+                    pass
+                else:
+                    print(f"Unexpectedd error: {err}")
+            # list configurations to get config arn
+            kafka_configs = kafka.list_configurations()
+            kafka_config = [
+                config["Arn"]
+                for config in kafka_configs["Configurations"]
+                if config["Name"] == "ElkkConfiguration"
+            ][0]
+            # get cluster version
+            kafka_cluster_version = kafka.describe_cluster(ClusterArn=kafka_arn)[
+                "ClusterInfo"
+            ]["CurrentVersion"]
+            # update cluster with configuration
+            try:
+                kafka.update_cluster_configuration(
+                    ClusterArn=kafka_arn,
+                    ConfigurationInfo={"Arn": kafka_config, "Revision": 1},
+                    CurrentVersion=kafka_cluster_version,
+                )
+            except ClientError as err:
+                if err.response["Error"]["Code"] == "BadRequestException":
+                    pass
+                else:
+                    print(f"Unexpectedd error: {err}")
+
         # instance for kafka client
         if client == True:
             kafka_client_instance = ec2.Instance(
@@ -152,8 +208,9 @@ class KafkaStack(core.Stack):
                 f"mv -f /home/ec2-user/client.properties /opt/{constants['KAFKA_DOWNLOAD_VERSION']}/bin/client.properties",
                 # create the topic, if already exists capture error message
                 f"kafka_arn=`aws kafka list-clusters --region {core.Aws.REGION} --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn",
-                f"kafka_zookeeper=`aws kafka describe-cluster --cluster-arn $kafka_arn --region {core.Aws.REGION} --output text --query 'ClusterInfo.ZookeeperConnectString'` && echo $kafka_zookeeper",
                 # get the zookeeper
+                f"kafka_zookeeper=`aws kafka describe-cluster --cluster-arn $kafka_arn --region {core.Aws.REGION} --output text --query 'ClusterInfo.ZookeeperConnectString'` && echo $kafka_zookeeper",
+                # create the topics
                 f"make_topic=`/opt/{constants['KAFKA_DOWNLOAD_VERSION']}/bin/kafka-topics.sh --create --zookeeper $kafka_zookeeper --replication-factor 3 --partitions 1 --topic {constants['ELKK_TOPIC']} 2>&1`",
                 "echo $make_topic",
                 # signal build is done

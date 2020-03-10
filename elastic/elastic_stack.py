@@ -38,9 +38,7 @@ class ElasticStack(core.Stack):
             description="elastic client security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(
-            elastic_client_security_group, "project", constants["PROJECT_TAG"]
-        )
+        core.Tag.add(elastic_client_security_group, "project", constants["PROJECT_TAG"])
         core.Tag.add(elastic_client_security_group, "Name", "elastic_client_sg")
         # Open port 22 for SSH
         elastic_client_security_group.add_ingress_rule(
@@ -85,19 +83,23 @@ class ElasticStack(core.Stack):
         elastic_document = iam.PolicyDocument()
         elastic_document.add_statements(elastic_policy)
 
+        # cluster config
+        cluster_config = {
+            "instanceCount": constants["ELASTIC_INSTANCE_COUNT"],
+            "instanceType": constants["ELASTIC_INSTANCE"],
+            "zoneAwarenessEnabled": True,
+            "zoneAwarenessConfig": {"availabilityZoneCount": 3},
+        }
+        if constants["ELASTIC_DEDICATED_MASTER"] == True:
+            cluster_config["dedicatedMasterEnabled"] = True
+            cluster_config["dedicatedMasterType"] = constants["ELASTIC_MASTER_INSTANCE"]
+            cluster_config["dedicatedMasterCount"] = constants["ELASTIC_MASTER_COUNT"]
+
         # create the elastic cluster
         elastic_domain = aes.CfnDomain(
             self,
             "elastic_domain",
-            elasticsearch_cluster_config={
-                "dedicatedMasterCount": constants["ELASTIC_MASTER_COUNT"],
-                "dedicatedMasterEnabled": True,
-                "dedicatedMasterType": constants["ELASTIC_MASTER_INSTANCE"],
-                "instanceCount": constants["ELASTIC_INSTANCE_COUNT"],
-                "instanceType": constants["ELASTIC_INSTANCE"],
-                "zoneAwarenessConfig": {"availabilityZoneCount": 3},
-                "zoneAwarenessEnabled": True,
-            },
+            elasticsearch_cluster_config=cluster_config,
             elasticsearch_version=constants["ELASTIC_VERSION"],
             ebs_options={"ebsEnabled": True, "volumeSize": 10},
             vpc_options={
@@ -113,9 +115,7 @@ class ElasticStack(core.Stack):
             elastic_instance = ec2.Instance(
                 self,
                 "elastic_client",
-                instance_type=ec2.InstanceType(
-                    constants["ELASTIC_CLIENT_INSTANCE"]
-                ),
+                instance_type=ec2.InstanceType(constants["ELASTIC_CLIENT_INSTANCE"]),
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),

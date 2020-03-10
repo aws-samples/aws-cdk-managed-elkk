@@ -173,7 +173,7 @@ cdk deploy elkk-filebeat
 
 An Amazon EC2 instance is deployed with Filebeat installed and configured to output to Kafka.  
 
-Wait until 2/2 checks are completed on the Filebeat instance to ensure that the userdata script as run.
+Wait until 2/2 checks are completed on the Filebeat instance to ensure that the userdata script has run.
 
 From a new terminal window connect to the Filebeat instance to create create dummy logs:
 

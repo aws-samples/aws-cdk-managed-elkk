@@ -74,7 +74,6 @@ class LogstashStack(core.Stack):
                 "$es_endpoint": es_endpoint,
                 "$kafka_brokers": kafka_get_brokers(),
                 "$elkk_region": os.environ["CDK_DEFAULT_REGION"],
-                "$elkk_topic": constants["ELKK_TOPIC"],
             },
         )
         logstash_conf = assets.Asset(self, "logstash.conf", path=logstash_conf_asset,)
