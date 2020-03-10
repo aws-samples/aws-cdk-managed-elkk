@@ -27,6 +27,7 @@ class LogstashStack(core.Stack):
         vpc_stack,
         logstash_ec2=True,
         logstash_fargate=True,
+        logstash_fargate_service=True,
         **kwargs,
     ) -> None:
         super().__init__(scope, id, **kwargs)
@@ -34,14 +35,18 @@ class LogstashStack(core.Stack):
         # get s3 bucket name
         s3client = boto3.client("s3")
         s3_bucket_list = s3client.list_buckets()
-        try:
-            s3_bucket_name = [
-                bkt["Name"]
-                for bkt in s3_bucket_list["Buckets"]
-                if "elkk-athena-" in bkt["Name"]
-            ][0]
-        except IndexError:
-            s3_bucket_name = ""
+        s3_bucket_name = ""
+        for bkt in s3_bucket_list["Buckets"]:
+            try:
+                bkt_tags = s3client.get_bucket_tagging(Bucket=bkt["Name"])["TagSet"]
+                for keypairs in bkt_tags:
+                    if keypairs["Key"] == "project" and keypairs["Value"] == "elkk-stack":
+                        s3_bucket_name = bkt["Name"]
+            except ClientError as err:
+                if err.response["Error"]["Code"] == "NoSuchTagSet":
+                    pass
+                else:
+                    print(f"Unexpectedd error: {err}")
 
         # get elastic endpoint
         esclient = boto3.client("es")
@@ -145,7 +150,6 @@ class LogstashStack(core.Stack):
             removal_policy=core.RemovalPolicy.DESTROY,
         )
 
-        # create policies for logstash
         # elastic policy
         access_elastic_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
@@ -280,19 +284,20 @@ class LogstashStack(core.Stack):
             logstash_task.add_to_task_role_policy(access_elastic_policy)
 
             # the service
-            logstash_service = (
-                ecs.FargateService(
-                    self,
-                    "logstash_service",
-                    cluster=logstash_cluster,
-                    task_definition=logstash_task,
-                    security_group=logstash_security_group,
+            if logstash_fargate_service:
+                logstash_service = (
+                    ecs.FargateService(
+                        self,
+                        "logstash_service",
+                        cluster=logstash_cluster,
+                        task_definition=logstash_task,
+                        security_group=logstash_security_group,
+                    )
+                    .auto_scale_task_count(min_capacity=3, max_capacity=10)
+                    .scale_on_cpu_utilization(
+                        "logstash_scaling",
+                        target_utilization_percent=75,
+                        scale_in_cooldown=core.Duration.seconds(60),
+                        scale_out_cooldown=core.Duration.seconds(60),
+                    )
                 )
-                .auto_scale_task_count(min_capacity=3, max_capacity=10)
-                .scale_on_cpu_utilization(
-                    "logstash_scaling",
-                    target_utilization_percent=75,
-                    scale_in_cooldown=core.Duration.seconds(60),
-                    scale_out_cooldown=core.Duration.seconds(60),
-                )
-            )

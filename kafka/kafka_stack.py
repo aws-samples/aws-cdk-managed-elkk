@@ -133,6 +133,7 @@ class KafkaStack(core.Stack):
                     "kafka:ListClusters",
                     "kafka:GetBootstrapBrokers",
                     "kafka:DescribeCluster",
+                    "ssm:UpdateInstanceInformation",
                 ],
                 resources=["*"],
             )
@@ -163,7 +164,9 @@ class KafkaStack(core.Stack):
                 # get the zookeeper
                 f"kafka_zookeeper=`aws kafka describe-cluster --cluster-arn $kafka_arn --region {core.Aws.REGION} --output text --query 'ClusterInfo.ZookeeperConnectString'` && echo $kafka_zookeeper",
                 # create the topics
-                f"make_topic=`/opt/{constants['KAFKA_DOWNLOAD_VERSION']}/bin/kafka-topics.sh --create --zookeeper $kafka_zookeeper --replication-factor 3 --partitions 1 --topic {constants['ELKK_TOPIC']} 2>&1`",
+                f"make_topic=`/opt/{constants['KAFKA_DOWNLOAD_VERSION']}/bin/kafka-topics.sh --create --zookeeper $kafka_zookeeper --replication-factor 3 --partitions 1 --topic apachelog 2>&1`",
+                "echo $make_topic",
+                f"make_topic=`/opt/{constants['KAFKA_DOWNLOAD_VERSION']}/bin/kafka-topics.sh --create --zookeeper $kafka_zookeeper --replication-factor 3 --partitions 1 --topic appevent 2>&1`",
                 "echo $make_topic",
                 # signal build is done
                 f"/opt/aws/bin/cfn-signal --resource {kafka_client_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",

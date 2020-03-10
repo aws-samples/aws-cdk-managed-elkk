@@ -78,9 +78,9 @@ def main():
     for fls in range(args.files_number):
         # set the app event type
         if args.event_type == "apachelog":
-            appevent = ""
+            eventrows = ""
         elif args.event_type == "appevent":
-            appevent = []
+            eventrows = []
 
         # write 10 lines
         for ln in range(args.row_number):
@@ -136,7 +136,7 @@ def main():
                 ]
             # add the apache log record to the event
             if args.event_type == "apachelog":
-                appevent += (
+                eventrows += (
                     f'{ip} - - [{dt} {tz}] "{method} {uri} HTTP/1.0" {response} {byt}\n'
                 )
             # add the appevent record
@@ -152,27 +152,25 @@ def main():
                     this_event["item"] = item["name"]
                     this_event["amount"] = item["amount"]
                     this_event["sku"] = item["code"]
-                appevent.append(this_event)
+                eventrows.append(this_event)
 
-        # create the filename
-        filename = f"log/access_log_{timestr}.log"
         # write out the file
         if args.output_type == "LOG":
-            # ensure the log folder exists
-            Path("log").mkdir(parents=True, exist_ok=True)
+            filename = f"{args.event_type}/access_log_{timestr}.log"
+            Path(args.event_type).mkdir(parents=True, exist_ok=True)
             # write out the files
             with open(filename, "w", encoding="utf-8") as f:
                 if args.event_type == "apachelog":
-                    f.write(appevent)
+                    f.write(eventrows)
                 elif args.event_type == "appevent":
-                    json.dump(appevent, f, ensure_ascii=False, indent=4)
+                    json.dump(eventrows, f, ensure_ascii=False, indent=4)
         # print to the console
         elif args.output_type == "CONSOLE":
             print(filename)
             if args.event_type == "apachelog":
-                print(appevent)
+                print(eventrows)
             elif args.event_type == "appevent":
-                print(json.dumps(appevent, ensure_ascii=False, indent=4))
+                print(json.dumps(eventrows, ensure_ascii=False, indent=4))
 
     if args.files_number > 1:
         time.sleep(30)

@@ -8,7 +8,6 @@ constants = {
     "KAFKA_BROKER_NODES": 3,
     "KAFKA_VERSION": "2.3.1",
     "KAFKA_INSTANCE_TYPE": "kafka.m5.large",
-    "ELKK_TOPIC": "elkkstacktopic",
     "KAFKA_CLIENT_INSTANCE": "t2.xlarge",
     # filebeat
     "FILEBEAT_INSTANCE": "t2.xlarge",
