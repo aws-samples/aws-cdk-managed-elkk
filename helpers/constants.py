@@ -14,7 +14,7 @@ constants = {
     "FILEBEAT_INSTANCE": "t2.xlarge",
     # elastic
     "ELASTIC_CLIENT_INSTANCE": "t2.xlarge",
-    "ELASTIC_DEDICATED_MASTER": True,
+    "ELASTIC_DEDICATED_MASTER": False,
     "ELASTIC_MASTER_COUNT": 3,
     "ELASTIC_MASTER_INSTANCE": "r5.large.elasticsearch",
     "ELASTIC_INSTANCE_COUNT": 3,

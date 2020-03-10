@@ -130,7 +130,7 @@ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].Clu
 # Get the bootstrap brokers
 kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a producer 
-/opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkstacktopic
+/opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkkstacktopic
 ```
 
 Leave the Kafka producer window open.  
@@ -152,7 +152,7 @@ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].Clu
 # Get the bootstrap brokers
 kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a consumer
-/opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkstacktopic --from-beginning
+/opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkkstacktopic --from-beginning
 ```
 
 Leave the Kafka consumer window open.  

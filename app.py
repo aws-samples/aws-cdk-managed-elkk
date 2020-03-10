@@ -29,7 +29,7 @@ kafka_stack = KafkaStack(
     app,
     "elkk-kafka",
     vpc_stack,
-    client=False,
+    client=True,
     env=core.Environment(
         account=os.environ["CDK_DEFAULT_ACCOUNT"],
         region=os.environ["CDK_DEFAULT_REGION"],
