@@ -2,7 +2,7 @@ constants = {
     # project level constants
     "PROJECT_TAG": "elkk-stack",
     # do not include the .pem in the keypair name
-    "KEY_PAIR": "ElkKeyPair",
+    "KEY_PAIR": "elk-key-pair",
     # kafka settings
     "KAFKA_DOWNLOAD_VERSION": "kafka_2.12-2.4.0",
     "KAFKA_BROKER_NODES": 3,

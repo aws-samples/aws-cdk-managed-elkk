@@ -60,18 +60,48 @@ python -m venv .env
 # activate the virtual environment
 source .env/bin/activate
 # download requirements
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 Create the EC2 SSH key pair allowing connections to Amazon EC2 instances.
 
 ```bash
-# create the key pair
+# create the key pair (note that the key-name has no .pem, output text has .pem at the end)
 aws ec2 create-key-pair --key-name $yourkeypair --query 'KeyMaterial' --output text > $yourkeypair.pem --region $yourregion
 # update key_pair permissions
 chmod 400 $yourkeypair.pem
 # move key_pair to .ssh
 mv $yourkeypair.pem $HOME/.ssh/$yourkeypair.pem
+```
+
+The file helpers/constants.py contains configuration for the Managed ELKK stack. This configuration can be left as default, except for the KEY_PAIR value which needs to be updated to your key pair name.
+
+Update the helpers/constants.py file with your key pair name:
+
+```python
+constants = {
+    # project level constants
+    "PROJECT_TAG": "elkk-stack",
+    # do not include the .pem in the keypair name
+    "KEY_PAIR": "$yourkeypair",
+    # kafka settings
+    "KAFKA_DOWNLOAD_VERSION": "kafka_2.12-2.4.0",
+    "KAFKA_BROKER_NODES": 3,
+    "KAFKA_VERSION": "2.3.1",
+    "KAFKA_INSTANCE_TYPE": "kafka.m5.large",
+    "KAFKA_CLIENT_INSTANCE": "t2.xlarge",
+    # filebeat
+    "FILEBEAT_INSTANCE": "t2.xlarge",
+    # elastic
+    "ELASTIC_CLIENT_INSTANCE": "t2.xlarge",
+    "ELASTIC_MASTER_COUNT": 3,
+    "ELASTIC_MASTER_INSTANCE": "r5.large.elasticsearch",
+    "ELASTIC_INSTANCE_COUNT": 3,
+    "ELASTIC_INSTANCE": "r5.large.elasticsearch",
+    "ELASTIC_VERSION": "7.1",
+    # logstash
+    "LOGSTASH_INSTANCE": "t2.xlarge",
+}
 ```
 
 Run all terminal commonds from the project root directory.
@@ -88,7 +118,7 @@ cdk bootstrap aws://$youraccount/$yourregion
 -----
 ## Amazon Virtual Private Cloud <a name="vpc"></a>
 
-The first stage in the ELKK deployment is to create an Amazon Virtual Private Cloud with public and private subnets. The ELKK deployment will be into this VPC.
+The first stage in the ELKK deployment is to create an Amazon Virtual Private Cloud with public and private subnets. The Managed ELKK stack will be deployed into this VPC.
 
 Use the AWS CDK to deploy an Amazon VPC across multiple availability zones.
 
@@ -109,11 +139,11 @@ Use the AWS CDK to deploy an Amazon MSK Cluster into the VPC.
 cdk deploy elkk-kafka
 ```
 
-When Client is set to True an Amazon EC2 instance is deployed to interact with the Amazon MSK Cluster. It can take up to 30 minutes for the Amazon MSK cluster to be deployed.
+When Client is set to True an Amazon EC2 instance is deployed to interact with the Amazon MSK Cluster. It can take up to 30 minutes for the Amazon MSK cluster and client instance to be deployed.
 
-Wait until 2/2 checks are completed on the Kafka client instance to ensure that the userdata scripts have fully run.  
+Wait until 2/2 checks are completed on the Kafka client instance to ensure that the userdata scripts have fully run.
 
-From a terminal window connect to the Kafka client instance to create a producer session:  
+Open a terminal window to connect to the Kafka client instance and create a Kafka producer session:
 
 ```bash
 # get the instance public dns
@@ -122,7 +152,7 @@ kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.
 ssh ec2-user@$kafka_client_dns
 ```
 
-While connected to the Kafka client instance create the producer session:
+While connected to the Kafka client instance create the Kafka producer session:
 
 ```bash
 # Get the cluster ARN
@@ -130,12 +160,12 @@ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].Clu
 # Get the bootstrap brokers
 kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a producer 
-/opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkkstacktopic
+/opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkstacktopic
 ```
 
-Leave the Kafka producer window open.  
+Leave the Kafka producer session window open.  
 
-From a new terminal window connect to the Kafka client instance to create consumer session:  
+Open a terminal window and connect to the Kafka client instance to create a Kafka consumer session:  
 
 ```bash
 # get the instance public dns
@@ -152,19 +182,21 @@ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].Clu
 # Get the bootstrap brokers
 kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a consumer
-/opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkkstacktopic --from-beginning
+/opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkstacktopic --from-beginning
 ```
 
-Leave the Kafka consumer window open.  
+Leave the Kafka consumer session window open.
 
-Messages typed into the Kafka producer window should appear in the Kafka consumer window.  
+Type messages into the Kakfa producer session and they are published to the Amazon MSK cluster
+
+The messages published to the Amazon MS cluster by the producer session will appear in the Kafka consumer window as they are read from the cluster.
 
 -----
 ## Filebeat <a name=filebeat></a>
 
-To simulate incoming logs for the ELKK cluster Filebeat will be installed on an Amazon EC2 instance. Filebeat is configured to read logs generated by a log generator installed on the EC2 instance and push the logs to the Amazon MSK cluster.
+To simulate incoming logs for the ELKK cluster Filebeat will be installed on an Amazon EC2 instance. Filebeat will harvest logs generated by a dummy log generator and push these logs to the Amazon MSK cluster.
 
-Use the AWS CDK to create an Amazon EC2 instance installed with filebeat and a dummy log generator.
+Use the AWS CDK to create an Amazon EC2 instance installed with Filebeat and a dummy log generator.
 
 ```bash
 # deploy the filebeat stack
@@ -173,9 +205,9 @@ cdk deploy elkk-filebeat
 
 An Amazon EC2 instance is deployed with Filebeat installed and configured to output to Kafka.  
 
-Wait until 2/2 checks are completed on the Filebeat instance to ensure that the userdata script has run.
+Wait until 2/2 checks are completed on the Filebeat instance to ensure that the userdata script as run.
 
-From a new terminal window connect to the Filebeat instance to create create dummy logs:
+Open a new terminal window connect to the Filebeat instance and create create dummy logs:
 
 ```bash
 # get the filebeat instance public dns
@@ -190,6 +222,8 @@ While connected to the Filebeat instance create dummy logs:
 # generate dummy logs with log builder
 ./log_generator.py
 ```
+
+Dummy logs created by the log generator will be written to the apachelog folder. Filebeat will harvest the logs and publish them to the Amazon MSK cluster.
 
 Messages generated by the log generator should appear in the Kafka consumer terminal window.
 
