@@ -81,7 +81,6 @@ logstash_stack = LogstashStack(
     vpc_stack,
     logstash_ec2=False,
     logstash_fargate=True,
-    logstash_fargate_service=True,
     env=core.Environment(
         account=os.environ["CDK_DEFAULT_ACCOUNT"],
         region=os.environ["CDK_DEFAULT_REGION"],

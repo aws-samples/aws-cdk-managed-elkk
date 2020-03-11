@@ -144,3 +144,5 @@ cdk.out/
 
 # for elkk
 *.asset
+*apachelog*
+*appevent*

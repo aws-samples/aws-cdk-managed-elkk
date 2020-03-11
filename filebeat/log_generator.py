@@ -14,8 +14,6 @@ import sys
 
 local = get_localzone()
 faker = Faker()
-timestr = time.strftime("%Y%m%d-%H%M%S")
-otime = datetime.datetime.now()
 
 # initiate the parse
 parser = argparse.ArgumentParser()
@@ -45,6 +43,8 @@ parser.add_argument(
     choices=["LOG", "CONSOLE"],
     default="LOG",
 )
+
+
 def files_range(x):
     x = int(x)
     if x < 1:
@@ -52,6 +52,8 @@ def files_range(x):
     if x > 100:
         raise argparse.ArgumentTypeError("Maximum number of files is 100")
     return x
+
+
 parser.add_argument(
     "-f",
     "--files",
@@ -76,11 +78,10 @@ def main():
 
     # how many files
     for fls in range(args.files_number):
-        # set the app event type
-        if args.event_type == "apachelog":
-            eventrows = ""
-        elif args.event_type == "appevent":
-            eventrows = []
+        # string for the output
+        eventrows = ""
+        timestr = time.strftime("%Y%m%d-%H%M%S")
+        otime = datetime.datetime.now()
 
         # write 10 lines
         for ln in range(args.row_number):
@@ -92,7 +93,8 @@ def main():
             tz = datetime.datetime.now(local).strftime("%z")
             # get the method
             method = random.choices(
-                population=["GET", "POST", "DELETE", "PUT"], weights=[0.6, 0.1, 0.1, 0.2]
+                population=["GET", "POST", "DELETE", "PUT"],
+                weights=[0.6, 0.1, 0.1, 0.2],
             )[0]
             # generate the uri
             uri = random.choice(
@@ -119,20 +121,24 @@ def main():
             treatment = random.choice(["A", "B"])
             # purchase
             if treatment == "A":
-                purchase = random.choices(population=["Yes", "No"], weights=[0.45, 0.55])
+                purchase = random.choices(
+                    population=[True, False], weights=[0.45, 0.55]
+                )
             else:
-                purchase = random.choices(population=["Yes", "No"], weights=[0.55, 0.45])
+                purchase = random.choices(
+                    population=[True, False], weights=[0.55, 0.45]
+                )
             if treatment == "A":
                 item = sku[
-                    random.choices(population=["Monthly", "Annual"], weights=[0.50, 0.50])[
-                        0
-                    ]
+                    random.choices(
+                        population=["Monthly", "Annual"], weights=[0.50, 0.50]
+                    )[0]
                 ]
             else:
                 item = sku[
-                    random.choices(population=["Monthly", "Annual"], weights=[0.30, 0.70])[
-                        0
-                    ]
+                    random.choices(
+                        population=["Monthly", "Annual"], weights=[0.30, 0.70]
+                    )[0]
                 ]
             # add the apache log record to the event
             if args.event_type == "apachelog":
@@ -143,27 +149,25 @@ def main():
             elif args.event_type == "appevent":
                 this_event = {
                     "userid": userid,
-                    "timstamp": f"{dt} {tz}",
+                    "timestamp": f"{dt} {tz}",
                     "treatment": treatment,
                     "purchase": purchase[0],
                     "ip": ip,
                 }
-                if purchase[0] == "Yes":
+                if purchase[0] == True:
                     this_event["item"] = item["name"]
                     this_event["amount"] = item["amount"]
                     this_event["sku"] = item["code"]
-                eventrows.append(this_event)
+                eventrows += f"{json.dumps(this_event, ensure_ascii=False)}\n"
 
         # write out the file
         if args.output_type == "LOG":
             filename = f"{args.event_type}/access_log_{timestr}.log"
+            print(fls+1, filename)
             Path(args.event_type).mkdir(parents=True, exist_ok=True)
             # write out the files
             with open(filename, "w", encoding="utf-8") as f:
-                if args.event_type == "apachelog":
-                    f.write(eventrows)
-                elif args.event_type == "appevent":
-                    json.dump(eventrows, f, ensure_ascii=False, indent=4)
+                f.write(eventrows)
         # print to the console
         elif args.output_type == "CONSOLE":
             print(filename)
@@ -172,8 +176,9 @@ def main():
             elif args.event_type == "appevent":
                 print(json.dumps(eventrows, ensure_ascii=False, indent=4))
 
-    if args.files_number > 1:
-        time.sleep(30)
+        if fls != args.files_number-1:
+            time.sleep(30)
+
 
 if __name__ == "__main__":
     main()

@@ -17,5 +17,7 @@ USER logstash
 RUN git clone https://github.com/awslabs/logstash-output-amazon_es.git /usr/share/logstash/plugins/logstash-output-amazon_es
 # update gemfile
 RUN sed -i '5igem "logstash-output-amazon_es", :path => "/usr/share/logstash/plugins/logstash-output-amazon_es"' /usr/share/logstash/Gemfile
+# check the pipeline file
+RUN /usr/share/logstash/bin/logstash --config.test_and_exit -f /usr/share/logstash/pipeline/logstash.conf
 # Entrypoint
 # "Entrypoint": [ "/usr/local/bin/docker-entrypoint" ]

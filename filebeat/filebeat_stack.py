@@ -104,9 +104,9 @@ class FilebeatStack(core.Stack):
             "chown -R ec2-user:ec2-user /home/ec2-user",
             # start filebeat
             "systemctl start filebeat",
-            # send the cfn signal
-            f"/opt/aws/bin/cfn-signal --resource {fb_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
         )
+        # add the signal
+        fb_userdata.add_signal_on_exit_command(resource=fb_instance)
         # attach the userdata
         fb_instance.add_user_data(fb_userdata.render())
         # add creation policy for instance

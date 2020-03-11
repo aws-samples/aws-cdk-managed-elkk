@@ -27,7 +27,6 @@ class LogstashStack(core.Stack):
         vpc_stack,
         logstash_ec2=True,
         logstash_fargate=True,
-        logstash_fargate_service=True,
         **kwargs,
     ) -> None:
         super().__init__(scope, id, **kwargs)
@@ -40,7 +39,10 @@ class LogstashStack(core.Stack):
             try:
                 bkt_tags = s3client.get_bucket_tagging(Bucket=bkt["Name"])["TagSet"]
                 for keypairs in bkt_tags:
-                    if keypairs["Key"] == "project" and keypairs["Value"] == "elkk-stack":
+                    if (
+                        keypairs["Key"] == "project"
+                        and keypairs["Value"] == "elkk-stack"
+                    ):
                         s3_bucket_name = bkt["Name"]
             except ClientError as err:
                 if err.response["Error"]["Code"] == "NoSuchTagSet":
@@ -240,9 +242,9 @@ class LogstashStack(core.Stack):
                 "chown -R logstash:logstash /etc/logstash",
                 # start logstash
                 "systemctl start logstash.service",
-                # send the cfn signal
-                f"/opt/aws/bin/cfn-signal --resource {logstash_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
             )
+            # add the signal
+            logstash_userdata.add_signal_on_exit_command(resource=logstash_instance)
 
             # attach the userdata
             logstash_instance.add_user_data(logstash_userdata.render())
@@ -272,7 +274,7 @@ class LogstashStack(core.Stack):
 
             # add container to the task
             logstash_task.add_container(
-                "logstash_image",
+                logstash_image_asset.source_hash,
                 image=ecs.ContainerImage.from_docker_image_asset(logstash_image_asset),
                 logging=ecs.LogDrivers.aws_logs(
                     stream_prefix="elkk", log_group=logstash_logs
@@ -284,20 +286,22 @@ class LogstashStack(core.Stack):
             logstash_task.add_to_task_role_policy(access_elastic_policy)
 
             # the service
-            if logstash_fargate_service:
-                logstash_service = (
-                    ecs.FargateService(
-                        self,
-                        "logstash_service",
-                        cluster=logstash_cluster,
-                        task_definition=logstash_task,
-                        security_group=logstash_security_group,
-                    )
-                    .auto_scale_task_count(min_capacity=3, max_capacity=10)
-                    .scale_on_cpu_utilization(
-                        "logstash_scaling",
-                        target_utilization_percent=75,
-                        scale_in_cooldown=core.Duration.seconds(60),
-                        scale_out_cooldown=core.Duration.seconds(60),
-                    )
+            logstash_service = (
+                ecs.FargateService(
+                    self,
+                    "logstash_service",
+                    cluster=logstash_cluster,
+                    task_definition=logstash_task,
+                    security_group=logstash_security_group,
+                    deployment_controller=ecs.DeploymentController(
+                        type=ecs.DeploymentControllerType.ECS
+                    ),
                 )
+                .auto_scale_task_count(min_capacity=3, max_capacity=10)
+                .scale_on_cpu_utilization(
+                    "logstash_scaling",
+                    target_utilization_percent=75,
+                    scale_in_cooldown=core.Duration.seconds(60),
+                    scale_out_cooldown=core.Duration.seconds(60),
+                )
+            )
