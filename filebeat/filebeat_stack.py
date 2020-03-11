@@ -44,7 +44,8 @@ class FilebeatStack(core.Stack):
         elastic_repo = assets.Asset(
             self, "elastic_repo", path=os.path.join(dirname, "elastic.repo")
         )
-
+        # userdata for filebeat
+        fb_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
         # instance for filebeat
         fb_instance = ec2.Instance(
             self,
@@ -57,6 +58,7 @@ class FilebeatStack(core.Stack):
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
             key_name=constants["KEY_PAIR"],
             security_group=kafka_stack.get_kafka_client_security_group,
+            user_data=fb_userdata,
         )
         core.Tag.add(fb_instance, "project", constants["PROJECT_TAG"])
         # create policies for ec2 to connect to kafka
@@ -72,8 +74,7 @@ class FilebeatStack(core.Stack):
         elastic_repo.grant_read(fb_instance)
         log_generator_py.grant_read(fb_instance)
         log_generator_requirements_txt.grant_read(fb_instance)
-        # userdata for filebeat
-        fb_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+        # add commands to the userdata
         fb_userdata.add_commands(
             # get setup assets files
             f"aws s3 cp s3://{filebeat_yml.s3_bucket_name}/{filebeat_yml.s3_object_key} /home/ec2-user/filebeat.yml",

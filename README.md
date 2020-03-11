@@ -143,6 +143,8 @@ When Client is set to True an Amazon EC2 instance is deployed to interact with t
 
 Wait until 2/2 checks are completed on the Kafka client instance to ensure that the userdata scripts have fully run.
 
+On creation the Kafka client instance will create three Kafka topics: "elkktopic", "apachelog", and "appevent".
+
 Open a terminal window to connect to the Kafka client instance and create a Kafka producer session:
 
 ```bash
@@ -159,8 +161,8 @@ While connected to the Kafka client instance create the Kafka producer session:
 kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
 # Get the bootstrap brokers
 kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
-# Connect to the cluster as a producer 
-/opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkstacktopic
+# Connect to the cluster as a producer on the Kakfa topic "elkktopic" 
+/opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkktopic
 ```
 
 Leave the Kafka producer session window open.  
@@ -219,7 +221,7 @@ ssh ec2-user@$filebeat_dns
 While connected to the Filebeat instance create dummy logs:
 
 ```bash
-# generate dummy logs with log builder
+# generate dummy logs with log generator
 ./log_generator.py
 ```
 

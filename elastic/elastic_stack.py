@@ -112,6 +112,9 @@ class ElasticStack(core.Stack):
 
         # instance for elasticsearch
         if client == True:
+            # userdata for elastic client
+            elastic_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+            # create the instance
             elastic_instance = ec2.Instance(
                 self,
                 "elastic_client",
@@ -123,6 +126,7 @@ class ElasticStack(core.Stack):
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
                 key_name=constants["KEY_PAIR"],
                 security_group=elastic_client_security_group,
+                user_data=elastic_userdata,
             )
             core.Tag.add(elastic_instance, "project", constants["PROJECT_TAG"])
             # needs elastic domain to be available
@@ -139,8 +143,7 @@ class ElasticStack(core.Stack):
             )
             # add the role permissions
             elastic_instance.add_to_role_policy(statement=access_elastic_policy)
-            # userdata for elastic client
-            elastic_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+            # add commands to the userdata
             elastic_userdata.add_commands(
                 # update packages
                 "yum update -y",

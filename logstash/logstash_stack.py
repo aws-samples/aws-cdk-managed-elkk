@@ -177,6 +177,9 @@ class LogstashStack(core.Stack):
 
         # create the logstash instance
         if logstash_ec2:
+            # userdata for logstash instance
+            logstash_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+            # create the instance
             logstash_instance = ec2.Instance(
                 self,
                 "logstash_client",
@@ -188,6 +191,7 @@ class LogstashStack(core.Stack):
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
                 key_name=constants["KEY_PAIR"],
                 security_group=logstash_security_group,
+                user_data=logstash_userdata,
             )
             core.Tag.add(logstash_instance, "project", constants["PROJECT_TAG"])
 
@@ -200,11 +204,9 @@ class LogstashStack(core.Stack):
             logstash_instance.add_to_role_policy(statement=access_elastic_policy)
             logstash_instance.add_to_role_policy(statement=access_kafka_policy)
             logstash_instance.add_to_role_policy(statement=access_s3_policy)
-
-            # userdata for logstash instance
-            logstash_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+            
+            # add commands to the userdata
             logstash_userdata.add_commands(
-                "set -e",
                 # get setup assets files
                 f"aws s3 cp s3://{logstash_yml.s3_bucket_name}/{logstash_yml.s3_object_key} /home/ec2-user/logstash.yml",
                 f"aws s3 cp s3://{logstash_repo.s3_bucket_name}/{logstash_repo.s3_object_key} /home/ec2-user/logstash.repo",

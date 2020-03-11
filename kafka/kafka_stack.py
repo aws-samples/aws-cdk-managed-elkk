@@ -111,6 +111,9 @@ class KafkaStack(core.Stack):
 
         # instance for kafka client
         if client == True:
+            # userdata for kafka client
+            kafka_client_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+            # create the instance
             kafka_client_instance = ec2.Instance(
                 self,
                 "kafka_client",
@@ -122,6 +125,7 @@ class KafkaStack(core.Stack):
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
                 key_name=constants["KEY_PAIR"],
                 security_group=self.kafka_client_security_group,
+                user_data=kafka_client_userdata,
             )
             core.Tag.add(kafka_client_instance, "project", constants["PROJECT_TAG"])
             # needs kafka cluster to be available
@@ -141,8 +145,7 @@ class KafkaStack(core.Stack):
             kafka_client_instance.add_to_role_policy(statement=access_kafka_policy)
             # add access to the file asset
             client_properties.grant_read(kafka_client_instance)
-            # userdata for kafka client
-            kafka_client_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+            # update the userdata with commands
             kafka_client_userdata.add_commands(
                 # get setup assets files
                 f"aws s3 cp s3://{client_properties.s3_bucket_name}/{client_properties.s3_object_key} /home/ec2-user/client.properties",
@@ -160,23 +163,24 @@ class KafkaStack(core.Stack):
                 # move client.properties to correct location
                 f"mv -f /home/ec2-user/client.properties /opt/{constants['KAFKA_DOWNLOAD_VERSION']}/bin/client.properties",
                 # create the topic, if already exists capture error message
-                f"kafka_arn=`aws kafka list-clusters --region {core.Aws.REGION} --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn",
+                f"kafka_arn=`aws kafka list-clusters --region {core.Aws.REGION} --output text --query 'ClusterInfoList[*].ClusterArn'`",
                 # get the zookeeper
-                f"kafka_zookeeper=`aws kafka describe-cluster --cluster-arn $kafka_arn --region {core.Aws.REGION} --output text --query 'ClusterInfo.ZookeeperConnectString'` && echo $kafka_zookeeper",
+                f"kafka_zookeeper=`aws kafka describe-cluster --cluster-arn $kafka_arn --region {core.Aws.REGION} --output text --query 'ClusterInfo.ZookeeperConnectString'`",
                 # create the topics
+                f"make_topic=`/opt/{constants['KAFKA_DOWNLOAD_VERSION']}/bin/kafka-topics.sh --create --zookeeper $kafka_zookeeper --replication-factor 3 --partitions 1 --topic elkktopic 2>&1`",
                 f"make_topic=`/opt/{constants['KAFKA_DOWNLOAD_VERSION']}/bin/kafka-topics.sh --create --zookeeper $kafka_zookeeper --replication-factor 3 --partitions 1 --topic apachelog 2>&1`",
-                "echo $make_topic",
                 f"make_topic=`/opt/{constants['KAFKA_DOWNLOAD_VERSION']}/bin/kafka-topics.sh --create --zookeeper $kafka_zookeeper --replication-factor 3 --partitions 1 --topic appevent 2>&1`",
-                "echo $make_topic",
             )
             # add the signal
-            kafka_client_userdata.add_signal_on_exit_command(resource=kafka_client_instance)
+            kafka_client_userdata.add_signal_on_exit_command(
+                resource=kafka_client_instance
+            )
             # attach the userdata
             kafka_client_instance.add_user_data(kafka_client_userdata.render())
             # add creation policy for instance
-            kafka_client_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
-                resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
-            )
+            #kafka_client_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
+            #    resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+            #)
 
     # properties
     @property
