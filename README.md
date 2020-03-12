@@ -74,6 +74,8 @@ chmod 400 $yourkeypair.pem
 mv $yourkeypair.pem $HOME/.ssh/$yourkeypair.pem
 ```
 
+The file helpers/constants.py contains configuration for the Managed ELKK stack. This configuration can be left as default, except for the KEY_PAIR value which needs to be updated to your key pair name.
+
 Run all terminal commonds from the project root directory.
 
 ### Boostrap the CDK
