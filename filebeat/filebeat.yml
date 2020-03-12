@@ -27,7 +27,6 @@ filebeat.inputs:
   paths:
     - /var/log/*.log
     - /home/ec2-user/log/*.log
-    #- c:\programdata\elasticsearch\logs\*
 
   # Exclude lines. A list of regular expressions to match. It drops the lines that are
   # matching any regular expression from the list.
@@ -63,6 +62,21 @@ filebeat.inputs:
   # Note: After is the equivalent to previous and before is the equivalent to to next in Logstash
   #multiline.match: after
 
+  # for apachelog
+- type: log
+  enabled: true
+  paths:
+    - /home/ec2-user/apachelog/*.log
+  fields:
+    log_topic: apachelog
+
+  # for appevent
+- type: log
+  enabled: true
+  paths:
+    - /home/ec2-user/appevent/*.log
+  fields:
+    log_topic: appevent
 
 #============================= Filebeat modules ===============================
 
@@ -176,7 +190,7 @@ output.kafka:
   hosts: [ $kafka_brokers ]
  
   # message topic selection + partitioning
-  topic: "$elkk_topic"
+  topic: '%{[fields.log_topic]}'
   # partition.round_robin:
   #   reachable_only: false
 

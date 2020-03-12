@@ -3,6 +3,13 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 from helpers.constants import constants
+from pathlib import Path
+from aws_cdk import (
+    core,
+    aws_ec2 as ec2,
+    aws_iam as iam,
+    aws_logs as logs,
+)
 
 # set boto3 client for amazon managged kafka
 kafkaclient = boto3.client("kafka")
@@ -10,6 +17,8 @@ kafkaclient = boto3.client("kafka")
 esclient = boto3.client("es")
 # set the boto3 client for amazon iam
 iamclient = boto3.client("iam")
+# set the client for logs
+logs_client = boto3.client("logs")
 
 # helper to create updated assets
 def file_updated(file_name: str = "", updates: dict = {}):
@@ -62,12 +71,14 @@ def kafka_get_brokers() -> str:
         kafka_brokers = kafkaclient.get_bootstrap_brokers(ClusterArn=kafka_get_arn())
         return kafka_brokers["BootstrapBrokerString"]
     except ClientError as err:
-        if err.response["Error"]["Message"] == "Missing required request parameters: [clusterArn]":
+        if (
+            err.response["Error"]["Message"]
+            == "Missing required request parameters: [clusterArn]"
+        ):
             return ""
         else:
             print(f"Unexpectedd error: {err}")
     return ""
-    # return f'''"{kafka_brokers.replace(",", '", "')}"'''
 
 
 def elastic_get_arn() -> str:
@@ -94,3 +105,99 @@ def elastic_get_endpoint() -> str:
         DomainName=elastic_get_domain()
     )
     es_endpoint = es_endpoint["DomainStatus"]["Endpoints"]["vpc"]
+
+
+def update_kafka_configuration(config_file):
+    """ ensure the configuration has auto enable topic """
+    # check if config exists
+    try:
+        config_arn = [
+            config
+            for config in kafkaclient.list_configurations()["Configurations"]
+            if config["Name"] == constants["PROJECT_TAG"]
+        ][0]["Arn"]
+    except IndexError as err:
+        # create the config if it does not exist
+        config_arn = kafkaclient.create_configuration(
+            Description="Elkk Configuration",
+            KafkaVersions=[constants["KAFKA_VERSION"]],
+            Name=constants["PROJECT_TAG"],
+            ServerProperties=Path("kafka/configuration.txt").read_text(),
+        )["Arn"]
+    try:
+        # check the config arn attached to the cluster
+        kafka_config_arn = kafkaclient.describe_cluster(ClusterArn=kafka_get_arn())[
+            "ClusterInfo"
+        ]["CurrentBrokerSoftwareInfo"]["ConfigurationArn"]
+    except KeyError as err:
+        # if not found then must be using default, get cluster version
+        kafka_cluster_version = kafkaclient.describe_cluster(
+            ClusterArn=kafka_get_arn()
+        )["ClusterInfo"]["CurrentVersion"]
+        # update cluster with configuration
+        return kafka_get_arn()
+        # park this for now
+        try:
+            kafkaclient.update_cluster_configuration(
+                ClusterArn=kafka_get_arn(),
+                ConfigurationInfo={"Arn": kafka_config_arn, "Revision": 1},
+                CurrentVersion=kafka_cluster_version,
+            )
+        except ClientError as err:
+            if err.response["Error"]["Code"] == "BadRequestException":
+                pass
+            else:
+                print(f"Unexpectedd error: {err}")
+    return kafka_get_arn()
+
+
+def user_data_init(log_group_name: str = None):
+    """ create userdata and defaults to a userdata item """
+    new_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+    new_userdata.add_commands(
+        # update packages
+        "yum update -y",
+        # add the aws logs
+        "yum install -y awslogs",
+        # update log group
+        f"sed -i 's#log_group_name = /var/log/messages#log_group_name = {log_group_name}#' /etc/awslogs/awslogs.conf",
+        #r"sed -i 's#[logger_reader]\nlevel=INFO#[logger_reader]\nlevel=WARNING#' /etc/awslogs/awslogs.conf",
+        #r"sed -i 's#[logger_publisher]\nlevel=INFO#[logger_publisher]\nlevel=WARNING#' /etc/awslogs/awslogs.conf",
+        # start the awslogs
+        "systemctl start awslogsd",
+        # set cli default region
+        f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
+    )
+    return new_userdata
+
+
+def instance_add_log_permissions(the_instance):
+    """ add log permissions to an instance """
+    # create policies for logs
+    logs_policy = iam.PolicyStatement(
+        effect=iam.Effect.ALLOW,
+        actions=[
+            "logs:CreateLogGroup",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents",
+            "logs:DescribeLogStreams",
+        ],
+        resources=["*"],
+    )
+    # add policy to instance
+    the_instance.add_to_role_policy(statement=logs_policy)
+
+
+def get_log_group_arn(log_group_name):
+    """ get it if exists """
+    # search for log group
+    log_groups = logs_client.describe_log_groups(logGroupNamePrefix=log_group_name)[
+        "logGroups"
+    ]
+    try:
+        # return the log group arn
+        return [lg["arn"] for lg in log_groups][0]
+    except IndexError:
+        # not found
+        pass
+    return None

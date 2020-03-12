@@ -8,7 +8,11 @@ from aws_cdk import (
 )
 import os
 from helpers.constants import constants
-from helpers.functions import ensure_service_linked_role
+from helpers.functions import (
+    ensure_service_linked_role,
+    user_data_init,
+    instance_add_log_permissions,
+)
 import urllib.request
 
 dirname = os.path.dirname(__file__)
@@ -38,9 +42,7 @@ class ElasticStack(core.Stack):
             description="elastic client security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(
-            elastic_client_security_group, "project", constants["PROJECT_TAG"]
-        )
+        core.Tag.add(elastic_client_security_group, "project", constants["PROJECT_TAG"])
         core.Tag.add(elastic_client_security_group, "Name", "elastic_client_sg")
         # Open port 22 for SSH
         elastic_client_security_group.add_ingress_rule(
@@ -85,19 +87,23 @@ class ElasticStack(core.Stack):
         elastic_document = iam.PolicyDocument()
         elastic_document.add_statements(elastic_policy)
 
+        # cluster config
+        cluster_config = {
+            "instanceCount": constants["ELASTIC_INSTANCE_COUNT"],
+            "instanceType": constants["ELASTIC_INSTANCE"],
+            "zoneAwarenessEnabled": True,
+            "zoneAwarenessConfig": {"availabilityZoneCount": 3},
+        }
+        if constants["ELASTIC_DEDICATED_MASTER"] == True:
+            cluster_config["dedicatedMasterEnabled"] = True
+            cluster_config["dedicatedMasterType"] = constants["ELASTIC_MASTER_INSTANCE"]
+            cluster_config["dedicatedMasterCount"] = constants["ELASTIC_MASTER_COUNT"]
+
         # create the elastic cluster
         elastic_domain = aes.CfnDomain(
             self,
             "elastic_domain",
-            elasticsearch_cluster_config={
-                "dedicatedMasterCount": constants["ELASTIC_MASTER_COUNT"],
-                "dedicatedMasterEnabled": True,
-                "dedicatedMasterType": constants["ELASTIC_MASTER_INSTANCE"],
-                "instanceCount": constants["ELASTIC_INSTANCE_COUNT"],
-                "instanceType": constants["ELASTIC_INSTANCE"],
-                "zoneAwarenessConfig": {"availabilityZoneCount": 3},
-                "zoneAwarenessEnabled": True,
-            },
+            elasticsearch_cluster_config=cluster_config,
             elasticsearch_version=constants["ELASTIC_VERSION"],
             ebs_options={"ebsEnabled": True, "volumeSize": 10},
             vpc_options={
@@ -110,12 +116,13 @@ class ElasticStack(core.Stack):
 
         # instance for elasticsearch
         if client == True:
+            # userdata for kafka client
+            elastic_userdata = user_data_init(log_group_name="elkk/elastic/instance")
+            # create the instance
             elastic_instance = ec2.Instance(
                 self,
                 "elastic_client",
-                instance_type=ec2.InstanceType(
-                    constants["ELASTIC_CLIENT_INSTANCE"]
-                ),
+                instance_type=ec2.InstanceType(constants["ELASTIC_CLIENT_INSTANCE"]),
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
@@ -123,11 +130,12 @@ class ElasticStack(core.Stack):
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
                 key_name=constants["KEY_PAIR"],
                 security_group=elastic_client_security_group,
+                user_data=elastic_userdata,
             )
             core.Tag.add(elastic_instance, "project", constants["PROJECT_TAG"])
             # needs elastic domain to be available
             elastic_instance.node.add_dependency(elastic_domain)
-            # create policies for ec2 to connect to elastic
+            # create policies for EC2 to connect to Elastic
             access_elastic_policy = iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=[
@@ -139,17 +147,10 @@ class ElasticStack(core.Stack):
             )
             # add the role permissions
             elastic_instance.add_to_role_policy(statement=access_elastic_policy)
-            # userdata for elastic client
-            elastic_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
-            elastic_userdata.add_commands(
-                # update packages
-                "yum update -y",
-                # set cli default region
-                f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
-                # send the cfn signal
-                f"/opt/aws/bin/cfn-signal --resource {elastic_instance.instance.logical_id} --stack {core.Aws.STACK_NAME}",
-            )
-            elastic_instance.add_user_data(elastic_userdata.render())
+            # add log permissions
+            instance_add_log_permissions(elastic_instance)
+            # add the signal
+            elastic_userdata.add_signal_on_exit_command(resource=elastic_instance)
             # add creation policy for instance
             elastic_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
                 resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")

@@ -30,3 +30,4 @@ class CustomResource(core.Construct):
         )
         # response
         self.response = resource.get_att("Response")
+
