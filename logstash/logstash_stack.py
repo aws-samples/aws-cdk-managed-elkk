@@ -11,9 +11,17 @@ from aws_cdk import (
     aws_logs as logs,
 )
 from helpers.constants import constants
-from helpers.functions import file_updated, kafka_get_brokers
+from helpers.functions import (
+    file_updated,
+    kafka_get_brokers,
+    user_data_init,
+    instance_add_log_permissions,
+    get_log_group_arn,
+)
 import boto3
 from botocore.exceptions import ClientError
+
+logs_client = boto3.client("logs")
 
 dirname = os.path.dirname(__file__)
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
@@ -144,14 +152,6 @@ class LogstashStack(core.Stack):
         except IndexError:
             pass
 
-        # cloudwatch log group
-        logstash_logs = logs.LogGroup(
-            self,
-            "logstash_logs",
-            log_group_name="elkk/logstash",
-            removal_policy=core.RemovalPolicy.DESTROY,
-        )
-
         # elastic policy
         access_elastic_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
@@ -172,13 +172,15 @@ class LogstashStack(core.Stack):
 
         # s3 policy
         access_s3_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW, actions=["s3:*",], resources=["*"],
+            effect=iam.Effect.ALLOW,
+            actions=["s3:ListBucket", "s3:PutObject"],
+            resources=["*"],
         )
 
-        # create the logstash instance
+        # create the Logstash instance
         if logstash_ec2:
-            # userdata for logstash instance
-            logstash_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+            # userdata for Logstash
+            logstash_userdata = user_data_init(log_group_name="elkk/logstash/instance")
             # create the instance
             logstash_instance = ec2.Instance(
                 self,
@@ -204,23 +206,22 @@ class LogstashStack(core.Stack):
             logstash_instance.add_to_role_policy(statement=access_elastic_policy)
             logstash_instance.add_to_role_policy(statement=access_kafka_policy)
             logstash_instance.add_to_role_policy(statement=access_s3_policy)
-            
+
+            # add log permissions
+            instance_add_log_permissions(logstash_instance)
+
             # add commands to the userdata
             logstash_userdata.add_commands(
                 # get setup assets files
                 f"aws s3 cp s3://{logstash_yml.s3_bucket_name}/{logstash_yml.s3_object_key} /home/ec2-user/logstash.yml",
                 f"aws s3 cp s3://{logstash_repo.s3_bucket_name}/{logstash_repo.s3_object_key} /home/ec2-user/logstash.repo",
                 f"aws s3 cp s3://{logstash_conf.s3_bucket_name}/{logstash_conf.s3_object_key} /home/ec2-user/logstash.conf",
-                # update packages
-                "yum update -y",
                 # install java
                 "amazon-linux-extras install java-openjdk11 -y",
                 # install git
                 "yum install git -y",
                 # install pip
                 "yum install python-pip -y",
-                # set cli default region
-                f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
                 # get elastic output to es
                 "git clone https://github.com/awslabs/logstash-output-amazon_es.git /home/ec2-user/logstash-output-amazon_es",
                 # logstash
@@ -248,9 +249,6 @@ class LogstashStack(core.Stack):
             # add the signal
             logstash_userdata.add_signal_on_exit_command(resource=logstash_instance)
 
-            # attach the userdata
-            logstash_instance.add_user_data(logstash_userdata.render())
-
             # add creation policy for instance
             logstash_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
                 resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
@@ -258,6 +256,14 @@ class LogstashStack(core.Stack):
 
         # fargate for logstash
         if logstash_fargate:
+            # cloudwatch log group for containers
+            logstash_logs_containers = logs.LogGroup(
+                self,
+                "logstash_logs_containers",
+                log_group_name="/elkk/logstash/container",
+                removal_policy=core.RemovalPolicy.DESTROY,
+                retention=logs.RetentionDays.ONE_WEEK,
+            )
             # docker image for logstash
             logstash_image_asset = ecr_assets.DockerImageAsset(
                 self, "logstash_image_asset", directory=dirname, file="Dockerfile"
@@ -279,7 +285,7 @@ class LogstashStack(core.Stack):
                 logstash_image_asset.source_hash,
                 image=ecs.ContainerImage.from_docker_image_asset(logstash_image_asset),
                 logging=ecs.LogDrivers.aws_logs(
-                    stream_prefix="elkk", log_group=logstash_logs
+                    stream_prefix="elkk", log_group=logstash_logs_containers
                 ),
             )
 

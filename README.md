@@ -31,7 +31,7 @@ Logs are stored in Amazon S3 to support cold data log analysis requirements. AWS
 
 Amazon Athena supports SQL queries against log data stored in Amazon S3.
 
-![ELKK Architecture](elkk_architecture.png)
+![ELKK Architecture](/img/elkk_architecture.png)
 
 -----
 ## Prerequisites <a name="prerequisites"></a>
@@ -72,11 +72,13 @@ aws ec2 create-key-pair --key-name $yourkeypair --query 'KeyMaterial' --output t
 chmod 400 $yourkeypair.pem
 # move key_pair to .ssh
 mv $yourkeypair.pem $HOME/.ssh/$yourkeypair.pem
+# add your key to keychain
+ssh-add -K ~/.ssh/$yourkeypair.pem 
 ```
 
 The file helpers/constants.py contains configuration for the Managed ELKK stack. This configuration can be left as default, except for the KEY_PAIR value which needs to be updated to your key pair name.
 
-Update the helpers/constants.py file with your key pair name:
+Update the [/helpers/constants.py](/helpers/constants.py) file with your key pair name:
 
 ```python
 constants = {
@@ -85,22 +87,9 @@ constants = {
     # do not include the .pem in the keypair name
     "KEY_PAIR": "$yourkeypair",
     # kafka settings
-    "KAFKA_DOWNLOAD_VERSION": "kafka_2.12-2.4.0",
-    "KAFKA_BROKER_NODES": 3,
-    "KAFKA_VERSION": "2.3.1",
-    "KAFKA_INSTANCE_TYPE": "kafka.m5.large",
-    "KAFKA_CLIENT_INSTANCE": "t2.xlarge",
-    # filebeat
-    "FILEBEAT_INSTANCE": "t2.xlarge",
-    # elastic
-    "ELASTIC_CLIENT_INSTANCE": "t2.xlarge",
-    "ELASTIC_MASTER_COUNT": 3,
-    "ELASTIC_MASTER_INSTANCE": "r5.large.elasticsearch",
-    "ELASTIC_INSTANCE_COUNT": 3,
-    "ELASTIC_INSTANCE": "r5.large.elasticsearch",
-    "ELASTIC_VERSION": "7.1",
-    # logstash
-    "LOGSTASH_INSTANCE": "t2.xlarge",
+    # etc
+    # etc
+    # etc
 }
 ```
 
@@ -154,7 +143,7 @@ kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.
 ssh ec2-user@$kafka_client_dns
 ```
 
-While connected to the Kafka client instance create the Kafka producer session:
+While connected to the Kafka client instance create the Kafka producer session on the elkktopic Kafka topic:
 
 ```bash
 # Get the cluster ARN
@@ -176,7 +165,7 @@ kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.
 ssh ec2-user@$kafka_client_dns
 ```
 
-While connected to the Kafka client instance create the consumer session:
+While connected to the Kafka client instance create the consumer session on the elkktopic Kafka topic.
 
 ```bash
 # Get the cluster ARN
@@ -184,7 +173,7 @@ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].Clu
 # Get the bootstrap brokers
 kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a consumer
-/opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkstacktopic --from-beginning
+/opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkktopic --from-beginning
 ```
 
 Leave the Kafka consumer session window open.
@@ -192,6 +181,8 @@ Leave the Kafka consumer session window open.
 Type messages into the Kakfa producer session and they are published to the Amazon MSK cluster
 
 The messages published to the Amazon MS cluster by the producer session will appear in the Kafka consumer window as they are read from the cluster.
+
+The Kafka client instance windows can be closed.
 
 -----
 ## Filebeat <a name=filebeat></a>
@@ -201,7 +192,7 @@ To simulate incoming logs for the ELKK cluster Filebeat will be installed on an 
 Use the AWS CDK to create an Amazon EC2 instance installed with Filebeat and a dummy log generator.
 
 ```bash
-# deploy the filebeat stack
+# deploy the Filebeat stack
 cdk deploy elkk-filebeat
 ```
 
@@ -212,20 +203,33 @@ Wait until 2/2 checks are completed on the Filebeat instance to ensure that the 
 Open a new terminal window connect to the Filebeat instance and create create dummy logs:
 
 ```bash
-# get the filebeat instance public dns
+# get the Filebeat instance public dns
 filebeat_dns=`aws ec2 describe-instances --filter file://filebeat/filebeat_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $filebeat_dns
 # use the public dns to connect to the filebeat instance
 ssh ec2-user@$filebeat_dns
 ```
 
-While connected to the Filebeat instance create dummy logs:
+While connected to the Filebeat EC2 instance create dummy logs:
 
 ```bash
-# generate dummy logs with log generator
+# generate dummy apache logs with log generator
 ./log_generator.py
 ```
 
 Dummy logs created by the log generator will be written to the apachelog folder. Filebeat will harvest the logs and publish them to the Amazon MSK cluster.
+
+In the Kafka client instance terminal window disconnect the consumer session with <control+c>.
+
+Create Kafka consumer session on the apachelog Kafka topic.
+
+```bash
+# Get the cluster ARN
+kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
+# Get the bootstrap brokers
+kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
+# Connect to the cluster as a consumer
+/opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic apachelog --from-beginning
+```
 
 Messages generated by the log generator should appear in the Kafka consumer terminal window.
 
@@ -262,14 +266,16 @@ elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $ela
 # get the elastic endpoint
 elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # curl a doc into elasticsearch
-curl -XPOST $elastic_endpoint/elkstack-test/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
+curl -XPOST $elastic_endpoint/elkktopic/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
 # curl to query elasticsearch
-curl -XPOST $elastic_endpoint/elkstack-test/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
+curl -XPOST $elastic_endpoint/elkktopic/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
 # count the records in the index
-curl -GET $elastic_endpoint/elkstack-test/_count
+curl -GET $elastic_endpoint/elkktopic/_count
 # exit the Elastic instance
 exit
 ```
+
+Amazon Elasticsearch Service has been deployed within a VPC in a private subnet. To accss Kibana we need to create a tunnel into the private subnet.
 
 Create an SSH tunnel to Kibana.
 
@@ -288,6 +294,32 @@ Leave the tunnel terminal window open.
 
 Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana.
 
+To view the records on the Kibana dashboard an "index pattern" needs to be created.
+
+Select "Management" on the left of the Kibana Dashboard.
+
+![Select Managment](/img/kibana_idx_1.png)
+
+Select "Index Patterns" at the top left of the Management Screen.
+
+![Select Index Patterns](/img/kibana_idx_2.png)
+
+Input an Index Patterns into the Index Pattern field as "elkktopc*".
+
+![Input Pattern](/img/kibana_idx_3.png)
+
+Click "Next Step".
+
+Click "Create Index Pattern".
+
+The fields from the index can be seen. Click on "Discover".
+
+![Select Discover](/img/kibana_idx_4.png)
+
+The data can be seen on the Discovery Dashboard.
+
+![Dashboard](/img/kibana_idx_5.png)
+
 -----
 ## Amazon Athena <a name=athena></a>
 
@@ -303,9 +335,11 @@ cdk deploy elkk-athena
 
 Logstash is deployed to subsribe to the Kafka topics and output the data into Elasticsearch. An additional output is added to push the data into S3. Logstash additionally parses the apache common log format and transforms the log data into json format.
 
+The Logstash pipeline configuration can be view in [logstash/logstash.conf](/logstash/logstash.conf)
+
 Deploy logstash first on an Amazon EC2 instance.
 
-Check the app.py file and verify that the elkk-logstash stack is initially set to create logstash on ec2 and not on fargate.
+Check the [/app.py](/app.py) file and verify that the elkk-logstash stack is initially set to create logstash on EC2 and not on fargate.
 
 ```python
 # logstash stack
@@ -322,7 +356,7 @@ logstash_stack = LogstashStack(
 )
 ```
 
-When we deploy the elkk-stack we will be deploying logstash on ec2.
+When we deploy the elkk-stack we will be deploying logstash an Amazon EC2 instance.
 
 ```bash
 cdk deploy elkk-logstash
@@ -344,7 +378,7 @@ ssh ec2-user@$logstash_dns
 While connected to logstash instance:
 
 ```bash
-# verify the logstash config
+# verify the logstash config, the last line should contain "Config Validation Result: OK. Exiting Logstash"
 /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.d/logstash.conf
 # check the logstash status
 service logstash status -l
@@ -359,13 +393,21 @@ In the Filebeat Instance generate new logfiles
 ./log_generator.py
 ```
 
-Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated.  
+Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated.
+
+Create a new Index Pattern for the apache logs using pattern "elkk-apachelog*". At the Configure Settings dialog there is now an option to select a timestamp. Select "@timestamp".
+
+![Dashboard](/img/kibana_idx_6.png)
+
+Apache Logs will now appear on a refreshed Dashboard by their timestamp. Apache Logs are selected by their index at mid-left of the Dashboard.
+
+![Dashboard](/img/kibana_idx_7.png)
 
 Navigate to s3 to view the files pushed to s3.
 
-Logstash can be deployed into containers or virtual machines. To deploy logstash on containers update the logstash deployment from Amazon ec2 to AWS Fargate.
+Logstash can be deployed into containers or virtual machines. To deploy logstash on containers update the logstash deployment from Amazon EC2 to AWS Fargate.
 
-Update the app.py file and verify that the elkk-logstash stack is set to fargate and not ec2.
+Update the [/app.py](/app.py) file and verify that the elkk-logstash stack is set to fargate and not ec2.
 
 ```python
 # logstash stack
@@ -388,16 +430,18 @@ Deploy the updated stack, terminating the Logstash EC2 instance and creating a L
 cdk deploy elkk-logstash
 ```
 
-The logstash ec2 instance will be terminated and an AWS Fargate cluster will be created. Logstash will be deployed as containerized tasks.
+The logstash EC2 instance will be terminated and an AWS Fargate cluster will be created. Logstash will be deployed as containerized tasks.
 
 In the Filebeat Instance generate new logfiles.
 
 ```bash
-# geneate new logs
-./log_generator.py
+# geneate new logs, the -f 20 will generate 20 files at 30 second intervals
+./log_generator.py -f 20
 ```
 
-Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated.
+Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated. They will appear in the Dashboard for Apache Logs as they are generated.
+
+![Dashboard](/img/kibana_idx_8.png)
 
 Navigat to s3 to view the files pushed into s3.
 

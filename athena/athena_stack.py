@@ -1,9 +1,5 @@
 # import modules
-from aws_cdk import (
-    core,
-    aws_s3 as s3,
-    aws_iam as iam,
-)
+from aws_cdk import core, aws_s3 as s3, aws_iam as iam, aws_glue as glue
 from helpers.custom_resource import CustomResource
 from helpers.constants import constants
 import os
@@ -15,8 +11,6 @@ dirname = os.path.dirname(__file__)
 class AthenaStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
-
-        # assets for athena
 
         # create s3 bucket for athena data
         self.s3_bucket = s3.Bucket(
@@ -40,7 +34,7 @@ class AthenaStack(core.Stack):
             ],
         )
         # tag the bucket
-        core.Tag.add(self.s3_bucket, "project", constants['PROJECT_TAG'])
+        core.Tag.add(self.s3_bucket, "project", constants["PROJECT_TAG"])
 
         # lambda policies
         s3_cleaner_policies = [

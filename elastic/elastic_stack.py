@@ -8,7 +8,11 @@ from aws_cdk import (
 )
 import os
 from helpers.constants import constants
-from helpers.functions import ensure_service_linked_role
+from helpers.functions import (
+    ensure_service_linked_role,
+    user_data_init,
+    instance_add_log_permissions,
+)
 import urllib.request
 
 dirname = os.path.dirname(__file__)
@@ -112,8 +116,8 @@ class ElasticStack(core.Stack):
 
         # instance for elasticsearch
         if client == True:
-            # userdata for elastic client
-            elastic_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+            # userdata for kafka client
+            elastic_userdata = user_data_init(log_group_name="elkk/elastic/instance")
             # create the instance
             elastic_instance = ec2.Instance(
                 self,
@@ -131,7 +135,7 @@ class ElasticStack(core.Stack):
             core.Tag.add(elastic_instance, "project", constants["PROJECT_TAG"])
             # needs elastic domain to be available
             elastic_instance.node.add_dependency(elastic_domain)
-            # create policies for ec2 to connect to elastic
+            # create policies for EC2 to connect to Elastic
             access_elastic_policy = iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=[
@@ -143,17 +147,10 @@ class ElasticStack(core.Stack):
             )
             # add the role permissions
             elastic_instance.add_to_role_policy(statement=access_elastic_policy)
-            # add commands to the userdata
-            elastic_userdata.add_commands(
-                # update packages
-                "yum update -y",
-                # set cli default region
-                f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
-            )
+            # add log permissions
+            instance_add_log_permissions(elastic_instance)
             # add the signal
             elastic_userdata.add_signal_on_exit_command(resource=elastic_instance)
-            # add the userdata to the instance
-            elastic_instance.add_user_data(elastic_userdata.render())
             # add creation policy for instance
             elastic_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
                 resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")

@@ -11,4 +11,5 @@ aws_cdk.aws_s3
 aws_cdk.aws_cloudformation
 aws_cdk.aws_ecs
 aws_cdk.aws_ecr_assets
+aws_cdk.aws_glue
 boto3

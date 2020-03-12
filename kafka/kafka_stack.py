@@ -22,6 +22,8 @@ from helpers.functions import (
     kafka_get_brokers,
     ensure_service_linked_role,
     update_kafka_configuration,
+    user_data_init,
+    instance_add_log_permissions,
 )
 
 dirname = os.path.dirname(__file__)
@@ -112,7 +114,7 @@ class KafkaStack(core.Stack):
         # instance for kafka client
         if client == True:
             # userdata for kafka client
-            kafka_client_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
+            kafka_client_userdata = user_data_init(log_group_name="elkk/kafka/instance")
             # create the instance
             kafka_client_instance = ec2.Instance(
                 self,
@@ -130,31 +132,28 @@ class KafkaStack(core.Stack):
             core.Tag.add(kafka_client_instance, "project", constants["PROJECT_TAG"])
             # needs kafka cluster to be available
             kafka_client_instance.node.add_dependency(self.kafka_cluster)
-            # create policies for ec2 to connect to kafka
+            # create policies for EC2 to connect to Kafka
             access_kafka_policy = iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=[
                     "kafka:ListClusters",
                     "kafka:GetBootstrapBrokers",
                     "kafka:DescribeCluster",
-                    "ssm:UpdateInstanceInformation",
                 ],
                 resources=["*"],
             )
             # add the role permissions
             kafka_client_instance.add_to_role_policy(statement=access_kafka_policy)
+            # add log permissions
+            instance_add_log_permissions(kafka_client_instance)
             # add access to the file asset
             client_properties.grant_read(kafka_client_instance)
             # update the userdata with commands
             kafka_client_userdata.add_commands(
                 # get setup assets files
                 f"aws s3 cp s3://{client_properties.s3_bucket_name}/{client_properties.s3_object_key} /home/ec2-user/client.properties",
-                # update packages
-                "yum update -y",
                 # update java
                 "yum install java-1.8.0 -y",
-                # set cli default region
-                f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
                 # install kakfa
                 f'wget https://www-us.apache.org/dist/kafka/{constants["KAFKA_DOWNLOAD_VERSION"].split("-")[-1]}/{constants["KAFKA_DOWNLOAD_VERSION"]}.tgz',
                 f"tar -xvf {constants['KAFKA_DOWNLOAD_VERSION']}.tgz",
@@ -178,9 +177,9 @@ class KafkaStack(core.Stack):
             # attach the userdata
             kafka_client_instance.add_user_data(kafka_client_userdata.render())
             # add creation policy for instance
-            #kafka_client_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
-            #    resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
-            #)
+            kafka_client_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
+                resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+            )
 
     # properties
     @property

@@ -9,7 +9,12 @@ from aws_cdk import (
     aws_s3_assets as assets,
 )
 import boto3
-from helpers.functions import file_updated, kafka_get_brokers
+from helpers.functions import (
+    file_updated,
+    kafka_get_brokers,
+    user_data_init,
+    instance_add_log_permissions,
+)
 from helpers.constants import constants
 
 dirname = os.path.dirname(__file__)
@@ -44,9 +49,9 @@ class FilebeatStack(core.Stack):
         elastic_repo = assets.Asset(
             self, "elastic_repo", path=os.path.join(dirname, "elastic.repo")
         )
-        # userdata for filebeat
-        fb_userdata = ec2.UserData.for_linux(shebang="#!/bin/bash -xe")
-        # instance for filebeat
+        # userdata for Filebeat
+        fb_userdata = user_data_init(log_group_name="elkk/filebeat/instance")
+        # instance for Filebeat
         fb_instance = ec2.Instance(
             self,
             "filebeat_client",
@@ -61,7 +66,8 @@ class FilebeatStack(core.Stack):
             user_data=fb_userdata,
         )
         core.Tag.add(fb_instance, "project", constants["PROJECT_TAG"])
-        # create policies for ec2 to connect to kafka
+
+        # create policies for EC2 to connect to kafka
         access_kafka_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["kafka:ListClusters", "kafka:GetBootstrapBrokers",],
@@ -69,6 +75,8 @@ class FilebeatStack(core.Stack):
         )
         # add the role permissions
         fb_instance.add_to_role_policy(statement=access_kafka_policy)
+        # add log permissions
+        instance_add_log_permissions(fb_instance)
         # add access to the file asset
         filebeat_yml.grant_read(fb_instance)
         elastic_repo.grant_read(fb_instance)
@@ -81,29 +89,25 @@ class FilebeatStack(core.Stack):
             f"aws s3 cp s3://{elastic_repo.s3_bucket_name}/{elastic_repo.s3_object_key} /home/ec2-user/elastic.repo",
             f"aws s3 cp s3://{log_generator_py.s3_bucket_name}/{log_generator_py.s3_object_key} /home/ec2-user/log_generator.py",
             f"aws s3 cp s3://{log_generator_requirements_txt.s3_bucket_name}/{log_generator_requirements_txt.s3_object_key} /home/ec2-user/requirements.txt",
-            # update packages
-            "yum update -y",
             # get python3
             "yum install python3 -y",
             # get pip
             "yum install python-pip -y",
-            # set cli default region
-            f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
             # make log generator executable
             "chmod +x /home/ec2-user/log_generator.py",
             # get log generator requirements
             "python3 -m pip install -r /home/ec2-user/requirements.txt",
-            # filebeat
+            # Filebeat
             "rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch",
-            # move filebeat repo file
+            # move Filebeat repo file
             "mv -f /home/ec2-user/elastic.repo /etc/yum.repos.d/elastic.repo",
-            # install filebeat
+            # install Filebeat
             "yum install filebeat -y",
             # move filebeat.yml to final location
             "mv -f /home/ec2-user/filebeat.yml /etc/filebeat/filebeat.yml",
             # update log generator ownership
             "chown -R ec2-user:ec2-user /home/ec2-user",
-            # start filebeat
+            # start Filebeat
             "systemctl start filebeat",
         )
         # add the signal

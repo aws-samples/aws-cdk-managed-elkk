@@ -14,7 +14,7 @@ from athena.athena_stack import AthenaStack
 
 app = core.App()
 
-# create the vpc
+# Vpc stack
 vpc_stack = VpcStack(
     app,
     "elkk-vpc",
@@ -24,7 +24,7 @@ vpc_stack = VpcStack(
     ),
 )
 
-# create the kafka cluster
+# Kafka stack
 kafka_stack = KafkaStack(
     app,
     "elkk-kafka",
@@ -37,7 +37,7 @@ kafka_stack = KafkaStack(
 )
 kafka_stack.add_dependency(vpc_stack)
 
-# filebeat stack (filebeat on ec2)
+# Filebeat stack (Filebeat on EC2)
 filebeat_stack = FilebeatStack(
     app,
     "elkk-filebeat",
@@ -50,7 +50,7 @@ filebeat_stack = FilebeatStack(
 )
 filebeat_stack.add_dependency(kafka_stack)
 
-# create the elasticsearch domain
+# Elastic stack
 elastic_stack = ElasticStack(
     app,
     "elkk-elastic",
@@ -63,7 +63,7 @@ elastic_stack = ElasticStack(
 )
 elastic_stack.add_dependency(vpc_stack)
 
-# athena
+# Athena stack
 athena_stack = AthenaStack(
     app,
     "elkk-athena",
@@ -74,7 +74,7 @@ athena_stack = AthenaStack(
 )
 athena_stack.add_dependency(vpc_stack)
 
-# logstash stack
+# Logstash stack
 logstash_stack = LogstashStack(
     app,
     "elkk-logstash",
