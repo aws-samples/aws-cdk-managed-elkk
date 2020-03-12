@@ -176,10 +176,10 @@ class KafkaStack(core.Stack):
             )
             # attach the userdata
             kafka_client_instance.add_user_data(kafka_client_userdata.render())
-            # add creation policy for instance
-            kafka_client_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
-                resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
-            )
+            # add creation policy for instance (disabled as appears to be firing in error)
+            #kafka_client_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
+            #    resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+            #)
 
     # properties
     @property

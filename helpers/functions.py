@@ -161,6 +161,8 @@ def user_data_init(log_group_name: str = None):
         "yum install -y awslogs",
         # update log group
         f"sed -i 's#log_group_name = /var/log/messages#log_group_name = {log_group_name}#' /etc/awslogs/awslogs.conf",
+        #r"sed -i 's#[logger_reader]\nlevel=INFO#[logger_reader]\nlevel=WARNING#' /etc/awslogs/awslogs.conf",
+        #r"sed -i 's#[logger_publisher]\nlevel=INFO#[logger_publisher]\nlevel=WARNING#' /etc/awslogs/awslogs.conf",
         # start the awslogs
         "systemctl start awslogsd",
         # set cli default region
