@@ -26,7 +26,7 @@ class KibanaStack(core.Stack):
                 ["docker", "create", "-ti", "--name", "dummy", "kibana-lambda", "bash"],
                 cwd=dirname,
             )
-            call(["docker", "cp", "dummy:kibana_lambda.zip", "."], cwd=dirname)
+            call(["docker", "cp", "dummy:/tmp/kibana_lambda.zip", "."], cwd=dirname)
             call(["docker", "rm", "-f", "dummy"], cwd=dirname)
 
         # the lambda
@@ -34,7 +34,7 @@ class KibanaStack(core.Stack):
             self,
             "Singleton",
             code=lambda_.Code.from_asset(os.path.join(dirname, "kibana_lambda.zip")),
-            handler="lambda_handler.main",
+            handler="lambda_function.lambda_handler",
             timeout=core.Duration.seconds(300),
-            runtime=lambda_.Runtime.PYTHON_3_7,
+            runtime=lambda_.Runtime.PYTHON_3_8,
         )
