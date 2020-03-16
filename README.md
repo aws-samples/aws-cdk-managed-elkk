@@ -60,7 +60,7 @@ python -m venv .env
 # activate the virtual environment
 source .env/bin/activate
 # download requirements
-python -m pip install -r requirements.txt
+(.env)$ python3 -m pip install -r requirements.txt
 ```
 
 Create the EC2 SSH key pair allowing connections to Amazon EC2 instances.
@@ -103,7 +103,7 @@ Create the CDK configuration by bootstrapping the CDK.
 
 ```bash
 # bootstrap the cdk
-cdk bootstrap aws://$youraccount/$yourregion
+(.env)$ cdk bootstrap aws://$youraccount/$yourregion
 ```
 
 -----
@@ -115,7 +115,7 @@ Use the AWS CDK to deploy an Amazon VPC across multiple availability zones.
 
 ```bash
 # deploy the vpc stack
-cdk deploy elkk-vpc
+(.env)$ cdk deploy elkk-vpc
 ```
 
 -----
@@ -127,7 +127,7 @@ Use the AWS CDK to deploy an Amazon MSK Cluster into the VPC.
 
 ```bash
 # deploy the kafka stack
-cdk deploy elkk-kafka
+(.env)$ cdk deploy elkk-kafka
 ```
 
 When Client is set to True an Amazon EC2 instance is deployed to interact with the Amazon MSK Cluster. It can take up to 30 minutes for the Amazon MSK cluster and client EC2 instance to be deployed.
@@ -195,7 +195,7 @@ Use the AWS CDK to create an Amazon EC2 instance installed with Filebeat and a d
 
 ```bash
 # deploy the Filebeat stack
-cdk deploy elkk-filebeat
+(.env)$ cdk deploy elkk-filebeat
 ```
 
 An Amazon EC2 instance is deployed with Filebeat installed and configured to output to Kafka.  
@@ -242,7 +242,7 @@ The Amazon Elasticsearch Service provides an Elasticsearch domain and Kibana das
 
 ```bash
 # deploy the elastic stack
-cdk deploy elkk-elastic
+(.env)$ cdk deploy elkk-elastic
 ```
 
 An Amazon EC2 instance is deployed to interact with the Amazon Elasticsearch Service domain.
@@ -267,7 +267,7 @@ While connected to the Elastic EC2 instance:
 elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $elastic_domain
 # get the elastic endpoint
 elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
-# curl a doc into elasticsearch
+# curl a sample doc into elasticsearch
 curl -XPOST $elastic_endpoint/elkktopic/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
 # curl to query elasticsearch
 curl -XPOST $elastic_endpoint/elkktopic/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
@@ -329,7 +329,7 @@ Amazon Simple Storage Service is used to storage logs for longer term storage. A
 
 ```bash
 # deploy the athena stack
-cdk deploy elkk-athena
+(.env)$ cdk deploy elkk-athena
 ```
 
 -----
@@ -359,7 +359,7 @@ logstash_stack = LogstashStack(
 When we deploy the elkk-stack we will be deploying Logstash on an Amazon EC2 instance.
 
 ```bash
-cdk deploy elkk-logstash
+(.env)$ cdk deploy elkk-logstash
 ```
 
 An Amazon EC2 instance is deployed with Logstash installed and configured with an input from Kafka and output to Elasticsearch and s3.
@@ -425,7 +425,7 @@ logstash_stack = LogstashStack(
 Deploy the updated stack, terminating the Logstash EC2 instance and creating a Logstash service on AWS Fargate.
 
 ```bash
-cdk deploy elkk-logstash
+(.env)$ cdk deploy elkk-logstash
 ```
 
 The logstash EC2 instance will be terminated and an AWS Fargate cluster will be created. Logstash will be deployed as containerized tasks.

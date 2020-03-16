@@ -11,6 +11,7 @@ from elastic.elastic_stack import ElasticStack
 from logstash.logstash_stack import LogstashStack
 from filebeat.filebeat_stack import FilebeatStack
 from athena.athena_stack import AthenaStack
+from kibana.kibana_stack import KibanaStack
 
 app = core.App()
 
@@ -89,4 +90,17 @@ logstash_stack = LogstashStack(
 logstash_stack.add_dependency(kafka_stack)
 logstash_stack.add_dependency(elastic_stack)
 logstash_stack.add_dependency(athena_stack)
+
+
+# Kibana stack
+kibana_stack = KibanaStack(
+    app,
+    "elkk-kibana",
+    env=core.Environment(
+        account=os.environ["CDK_DEFAULT_ACCOUNT"],
+        region=os.environ["CDK_DEFAULT_REGION"],
+    ),
+)
+
+# synth the app
 app.synth()

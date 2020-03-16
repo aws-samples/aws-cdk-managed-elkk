@@ -1,9 +1,6 @@
 import os
 from aws_cdk import aws_cloudformation as cfn, aws_lambda as lambda_, core
 
-dirname = os.path.dirname(__file__)
-
-
 class CustomResource(core.Construct):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id)

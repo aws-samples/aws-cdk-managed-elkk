@@ -260,7 +260,7 @@ class LogstashStack(core.Stack):
             logstash_logs_containers = logs.LogGroup(
                 self,
                 "logstash_logs_containers",
-                log_group_name="/elkk/logstash/container",
+                log_group_name="elkk/logstash/container",
                 removal_policy=core.RemovalPolicy.DESTROY,
                 retention=logs.RetentionDays.ONE_WEEK,
             )

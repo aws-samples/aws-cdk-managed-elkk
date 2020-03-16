@@ -1,13 +1,9 @@
 # import modules
-import os
 from aws_cdk import (
     core,
     aws_ec2 as ec2,
 )
 from helpers.constants import constants
-
-dirname = os.path.dirname(__file__)
-
 
 class VpcStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:

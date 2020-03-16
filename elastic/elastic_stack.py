@@ -15,7 +15,6 @@ from helpers.functions import (
 )
 import urllib.request
 
-dirname = os.path.dirname(__file__)
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 
