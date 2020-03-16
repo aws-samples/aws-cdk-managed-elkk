@@ -12,7 +12,7 @@ import boto3
 from io import BytesIO
 from urllib.parse import urlencode
 
-from settings import (
+from .settings import (
     LOGGING_LEVELS,
     LOG_LEVEL,
     SERVER_URL,
