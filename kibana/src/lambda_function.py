@@ -4,9 +4,9 @@ lambda_function
 """
 import requests
 
-from .settings import CACHEABLE_TYPES
+from settings import CACHEABLE_TYPES
 
-from .utils import (
+from utils import (
     valid_request,
     error_response,
     exception_response,
@@ -48,9 +48,12 @@ def lambda_handler(event: dict, context: object) -> dict:
     # validate the incoming request before proxying to ES cluster
     if not valid_request():
         # return an error response through API Gateway
+        print("not valid request")
         return error_response()
     # validate and clean the incoming request's body data (if any)
+    print("event", event)
     body = clean_body(event)
+    print("body", body)
     # generate headers to send to ES, based on the incoming request headers
     headers = proxy_headers(event)
     # generate a url and query parameters (if any) for the request to ES

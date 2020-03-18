@@ -104,7 +104,7 @@ def elastic_get_endpoint() -> str:
     es_endpoint = esclient.describe_elasticsearch_domain(
         DomainName=elastic_get_domain()
     )
-    es_endpoint = es_endpoint["DomainStatus"]["Endpoints"]["vpc"]
+    return es_endpoint["DomainStatus"]["Endpoints"]["vpc"]
 
 
 def update_kafka_configuration(config_file):

@@ -96,11 +96,14 @@ logstash_stack.add_dependency(athena_stack)
 kibana_stack = KibanaStack(
     app,
     "elkk-kibana",
+    elastic_stack,
+    build_zip=False,
     env=core.Environment(
         account=os.environ["CDK_DEFAULT_ACCOUNT"],
         region=os.environ["CDK_DEFAULT_REGION"],
     ),
 )
+kibana_stack.add_dependency(elastic_stack)
 
 # synth the app
 app.synth()
