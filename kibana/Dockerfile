@@ -11,8 +11,8 @@ RUN rm -rf /var/runtime /var/lang /var/rapid && \
 RUN pip install -U pip setuptools --no-cache-dir
 # Copy our code over to the container
 RUN mkdir /tmp/build
-ADD src/*.py /tmp/build/
-ADD src/requirements.txt /tmp/requirements.txt
+ADD lambda_function.py /tmp/build/lambda_function.py
+ADD requirements.txt /tmp/requirements.txt
 # Build the deployment package
 RUN pip install -r /tmp/requirements.txt -t /tmp/build
 RUN ls -l /tmp/build
