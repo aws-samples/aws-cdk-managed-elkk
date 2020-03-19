@@ -148,3 +148,4 @@ cdk.out/
 *appevent*
 *.zip
 .idea/
+.DS_Store
