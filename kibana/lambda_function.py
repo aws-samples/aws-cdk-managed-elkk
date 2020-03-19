@@ -13,7 +13,7 @@ s3 = boto3.client("s3")
 
 # settings ...
 AES_DOMAIN_ENDPOINT = os.environ.get("AES_DOMAIN_ENDPOINT")
-CLOUDFRONT_CACHE_URL = os.environ.get("CLOUNDFRONT_CACHE_URL")
+CLOUDFRONT_CACHE_URL = os.environ.get("CLOUDFRONT_CACHE_URL")
 KIBANA_BUCKET = os.environ.get("KIBANA_BUCKET")
 S3_MAX_AGE = os.environ.get("S3_MAX_AGE", "2629746")
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "warning")
