@@ -96,8 +96,9 @@ logstash_stack.add_dependency(athena_stack)
 kibana_stack = KibanaStack(
     app,
     "elkk-kibana",
+    vpc_stack,
     elastic_stack,
-    build_zip=False,
+    update_lambda_zip=False,
     env=core.Environment(
         account=os.environ["CDK_DEFAULT_ACCOUNT"],
         region=os.environ["CDK_DEFAULT_REGION"],

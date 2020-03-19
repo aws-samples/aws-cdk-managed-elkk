@@ -53,29 +53,29 @@ class ElasticStack(core.Stack):
         )
 
         # security group for elastic
-        elastic_security_group = ec2.SecurityGroup(
+        self.elastic_security_group = ec2.SecurityGroup(
             self,
             "elastic_security_group",
             vpc=vpc_stack.get_vpc,
             description="elastic security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(elastic_security_group, "project", constants["PROJECT_TAG"])
-        core.Tag.add(elastic_security_group, "Name", "elastic_sg")
+        core.Tag.add(self.elastic_security_group, "project", constants["PROJECT_TAG"])
+        core.Tag.add(self.elastic_security_group, "Name", "elastic_sg")
 
         # ingress for elastic from self
-        elastic_security_group.connections.allow_from(
-            elastic_security_group, ec2.Port.all_traffic(), "within elastic",
+        self.elastic_security_group.connections.allow_from(
+            self.elastic_security_group, ec2.Port.all_traffic(), "within elastic",
         )
         # ingress for elastic from elastic client
-        elastic_security_group.connections.allow_from(
+        self.elastic_security_group.connections.allow_from(
             elastic_client_security_group,
             ec2.Port.all_traffic(),
             "from elastic client",
         )
         # ingress for elastic client from elastic
         elastic_client_security_group.connections.allow_from(
-            elastic_security_group, ec2.Port.all_traffic(), "from elastic",
+            self.elastic_security_group, ec2.Port.all_traffic(), "from elastic",
         )
 
         # elastic policy
@@ -106,7 +106,7 @@ class ElasticStack(core.Stack):
             elasticsearch_version=constants["ELASTIC_VERSION"],
             ebs_options={"ebsEnabled": True, "volumeSize": 10},
             vpc_options={
-                "securityGroupIds": [elastic_security_group.security_group_id],
+                "securityGroupIds": [self.elastic_security_group.security_group_id],
                 "subnetIds": vpc_stack.get_vpc_private_subnet_ids,
             },
             access_policies=elastic_document,

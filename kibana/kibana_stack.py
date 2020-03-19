@@ -7,10 +7,12 @@ from aws_cdk import (
     aws_apigateway as apigw,
     aws_s3 as s3,
     aws_cloudfront as cloudfront,
+    aws_iam as iam,
 )
+import pathlib
 
 from helpers.constants import constants
-from helpers.functions import elastic_get_endpoint, elastic_get_domain
+from helpers.functions import elastic_get_endpoint, elastic_get_domain, get_digest
 
 dirname = os.path.dirname(__file__)
 
@@ -20,14 +22,16 @@ class KibanaStack(core.Stack):
         self,
         scope: core.Construct,
         id_: str,
+        vpc_stack,
         elastic_stack,
-        build_zip: bool = True,
+        update_lambda_zip=False,
         **kwargs,
     ) -> None:
         super().__init__(scope, id_, **kwargs)
 
-        # rebuild the lambda if changed
-        if build_zip:
+        # if update lambda zip
+        if update_lambda_zip:
+            # rebuild the lambda if changed
             call(["docker", "build", "--tag", "kibana-lambda", "."], cwd=dirname)
             call(
                 ["docker", "create", "-ti", "--name", "dummy", "kibana-lambda", "bash"],
@@ -53,21 +57,31 @@ class KibanaStack(core.Stack):
             timeout=core.Duration.seconds(300),
             runtime=lambda_.Runtime.PYTHON_3_8,
             environment={
-                "AES_DOMAIN_ENDPOINT": elastic_get_endpoint(),
+                "AES_DOMAIN_ENDPOINT": f"https://{elastic_get_endpoint()}",
                 "KIBANA_BUCKET": kibana_bucket.bucket_name,
                 "S3_MAX_AGE": "2629746",
                 "LOG_LEVEL": "warning",
+                "CLOUNDFRONT_CACHE_URL": "https://kibana_cloudfront_domain_name/bucket_cached",
             },
+            vpc=vpc_stack.get_vpc,
+            security_groups=[elastic_stack.elastic_security_group],
         )
+        # create policies for the lambda
+        kibana_lambda_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW, actions=["s3:*",], resources=["*"],
+        )
+        # add the role permissions
+        kibana_lambda.add_to_role_policy(statement=kibana_lambda_policy)
 
         # the api gateway
-        kibana_api = apigw.LambdaRestApi(self, "kibana_api", handler=kibana_lambda,)
+        kibana_api = apigw.LambdaRestApi(
+            self, "kibana_api", handler=kibana_lambda, binary_media_types=["*/*"]
+        )
 
         kibana_identity = cloudfront.OriginAccessIdentity(self, "kibana_identity")
 
         kibana_api_domain = "/".join(kibana_api.url.split("/")[1:-2])[1:]
         kibana_api_path = f'/{"/".join(kibana_api.url.split("/")[-2:])}'
-        print(kibana_api_path)
 
         # create the cloudfront distribution
         kibana_distribution = cloudfront.CloudFrontWebDistribution(
@@ -99,6 +113,4 @@ class KibanaStack(core.Stack):
         )
         # needs api and bucket to be available
         kibana_distribution.node.add_dependency(kibana_api)
-        # add to lambda
-        # this needs to be manually updated to the correct value ....
-        kibana_lambda.add_environment("CLOUNDFRONT_CACHE_URL", "kibana_distribution.domain_name/bucket_cached")
+

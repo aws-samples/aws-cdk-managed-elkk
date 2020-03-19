@@ -1,29 +1,44 @@
-"""
-utils
--------
-"""
+# modules
+import os
 import logging
+import requests
 import json
 import base64
 from typing import Optional, Tuple, Union
-
-import requests
 import boto3
 from io import BytesIO
 from urllib.parse import urlencode
 
-from settings import (
-    AES_DOMAIN_ENDPOINT,
-    CLOUDFRONT_CACHE_URL,
-    KIBANA_BUCKET,
-    S3_MAX_AGE,
-    LOG_LEVEL,
-    CACHEABLE_TYPES,
-    ACCEPTED_HEADERS,
-    METHOD_MAP,
-    LOGGING_LEVELS,
-)
+s3 = boto3.client("s3")
 
+# settings ...
+AES_DOMAIN_ENDPOINT = os.environ.get("AES_DOMAIN_ENDPOINT")
+CLOUDFRONT_CACHE_URL = os.environ.get("CLOUNDFRONT_CACHE_URL")
+KIBANA_BUCKET = os.environ.get("KIBANA_BUCKET")
+S3_MAX_AGE = os.environ.get("S3_MAX_AGE", "2629746")
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "warning")
+CACHEABLE_TYPES = ["image", "javascript", "css", "font"]
+ACCEPTED_HEADERS = ["accept", "host", "content-type"]
+METHOD_MAP = {
+    "get": requests.get,
+    "options": requests.options,
+    "put": requests.put,
+    "post": requests.post,
+    "head": requests.head,
+    "patch": requests.patch,
+    "delete": requests.delete,
+}
+LOGGING_LEVELS = {
+    "info": logging.INFO,
+    "debug": logging.DEBUG,
+    "warn": logging.WARNING,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+    "critical": logging.CRITICAL,
+    "fatal": logging.FATAL,
+}
+
+# utils
 if len(logging.getLogger().handlers) > 0:
     # The Lambda environment pre-configures a handler logging to stderr.
     # If a handler is already configured,
@@ -32,9 +47,6 @@ if len(logging.getLogger().handlers) > 0:
 else:
     logging.basicConfig(level=LOGGING_LEVELS[LOG_LEVEL])
 logger = logging.getLogger()
-
-
-s3 = boto3.client("s3")
 
 
 def clean_body(event: dict) -> Optional[dict]:
@@ -181,3 +193,62 @@ def send_to_es(
     logger.debug(locals())
     # return the response data and the content_type from ElasticSearch
     return data, content_type
+
+
+# the lambda handler
+# noinspection PyUnusedLocal
+def lambda_handler(event: dict, context: object) -> dict:
+    """
+    Accept the incoming proxy integration event from API Gateway and forward
+    the request to the Amazon ElasticSearch domain defined in environment
+    variables.
+
+    .. info::
+        The request will have been authorized by a separate Lambda function
+        defined as the Authorizer function on the API Gateway.
+
+    :param event: A dictionary of attributes passed to the function by API
+        Gateway. See the documentation for further details:
+
+        https://docs.aws.amazon.com/lambda/latest/dg/with-on-demand-https.html
+    :param context: An ``EventContext`` object which gives access to various
+        attributes of the runtime environment. See the documentation for further
+        details:
+
+        https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html
+    :return: A dictionary containing necessary response attributes used to
+        indicate success or failure of the request to API Gateway. The ``body``
+        attribute will be passed back to the requesting client by API Gateway,
+        after transformation.
+    """
+    # validate the incoming request before proxying to ES cluster
+    if not valid_request():
+        # return an error response through API Gateway
+        return error_response()
+    # validate and clean the incoming request's body data (if any)
+    body = clean_body(event)
+    # generate headers to send to ES, based on the incoming request headers
+    headers = proxy_headers(event)
+    # generate a url and query parameters (if any) for the request to ES
+    url, params = generate_url(event)
+    # get the correct request function to use for the request to ES
+    # will raise an unhandled KeyError if an unsupported method is found
+    # within the event
+    request_func = choose_request_func(event)
+    try:
+        # send the formed request to ElasticSearch
+        data, content_type = send_to_es(url, body, headers, request_func)
+    except requests.RequestException as e:
+        # the request to ES returned an error response so proxy that error
+        # back to API Gateway
+        return exception_response(e, body, params, headers)
+    # check if the returned content-type is cache-able
+    if any([t in content_type for t in CACHEABLE_TYPES]):
+        # if cache-able, upload the object to S3 and redirect the incoming
+        # request to the location of the uploaded file. Sets the appropriate
+        # value for the cache-control header
+        return redirect_to_object(data, event, content_type)
+    else:
+        # if not cache-able, return the data from ES back through API Gateway
+        # to the user. Sets the appropriate value for the cache-control header
+        return proxied_request(data, content_type)
