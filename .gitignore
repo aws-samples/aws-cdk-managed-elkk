@@ -148,3 +148,5 @@ cdk.out/
 *appevent*
 *.zip
 .idea/
+# for mac
+*.DS_Store*
