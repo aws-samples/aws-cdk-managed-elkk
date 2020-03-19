@@ -48,8 +48,8 @@ class LogstashStack(core.Stack):
                 bkt_tags = s3client.get_bucket_tagging(Bucket=bkt["Name"])["TagSet"]
                 for keypairs in bkt_tags:
                     if (
-                        keypairs["Key"] == "project"
-                        and keypairs["Value"] == "elkk-stack"
+                        keypairs["Key"] == "aws:cloudformation:stack-name"
+                        and keypairs["Value"] == "elkk-athena"
                     ):
                         s3_bucket_name = bkt["Name"]
             except ClientError as err:

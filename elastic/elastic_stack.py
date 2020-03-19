@@ -154,8 +154,3 @@ class ElasticStack(core.Stack):
             elastic_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
                 resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
             )
-
-    # properties to share with other stacks ...
-    #@property
-    #def get_aes_domain(self):
-    #    return self.elastic_domain.get_att("domainName").to_string()

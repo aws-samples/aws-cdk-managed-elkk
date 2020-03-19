@@ -52,7 +52,7 @@ class AthenaStack(core.Stack):
         s3_cleaner = CustomResource(
             self,
             "s3_cleaner",
-            HandlerPath=os.path.join(dirname, "s3_cleaner_handler.py"),
+            HandlerPath=os.path.join(dirname, "../helpers/s3_cleaner_handler.py"),
             BucketName=self.s3_bucket.bucket_name,
             ResourcePolicies=s3_cleaner_policies,
         )
