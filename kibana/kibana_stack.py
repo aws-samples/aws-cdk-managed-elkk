@@ -60,13 +60,6 @@ class KibanaStack(core.Stack):
             handler="lambda_function.lambda_handler",
             timeout=core.Duration.seconds(300),
             runtime=lambda_.Runtime.PYTHON_3_8,
-            environment={
-                "AES_DOMAIN_ENDPOINT": f"https://{elastic_get_endpoint()}",
-                "KIBANA_BUCKET": kibana_bucket.bucket_name,
-                "S3_MAX_AGE": "2629746",
-                "LOG_LEVEL": "warning",
-                "CLOUDFRONT_CACHE_URL": "https://kibana_cloudfront_domain_name/bucket_cached",
-            },
             vpc=vpc_stack.get_vpc,
             security_groups=[elastic_stack.elastic_security_group],
         )
@@ -124,8 +117,8 @@ class KibanaStack(core.Stack):
         # needs api and bucket to be available
         kibana_distribution.node.add_dependency(kibana_api)
 
-        # lambda policies
-        s3_cleaner_policies = [
+        # kibana bucket empty policies
+        kibana_bucket_empty_policy = [
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW, actions=["s3:ListBucket"], resources=["*"],
             ),
@@ -136,40 +129,23 @@ class KibanaStack(core.Stack):
             ),
         ]
         # create the custom resource
-        s3_cleaner = CustomResource(
+        kibana_bucket_empty = CustomResource(
             self,
-            "s3_cleaner",
-            HandlerPath=os.path.join(dirname, "../helpers/s3_cleaner_handler.py"),
+            "kibana_bucket_empty",
+            PhysicalId="kibanaBucketEmpty",
+            Description="Empty kibana cache s3 bucket",
+            Uuid="f7d4f730-4ee1-13e8-9c2d-fa7ae06bbebc",
+            HandlerPath=os.path.join(dirname, "../helpers/s3_bucket_empty.py"),
             BucketName=kibana_bucket.bucket_name,
-            ResourcePolicies=s3_cleaner_policies,
+            ResourcePolicies=kibana_bucket_empty_policy,
         )
         # tag the lamdbda
-        core.Tag.add(s3_cleaner, "project", constants["PROJECT_TAG"])
+        core.Tag.add(kibana_bucket_empty, "project", constants["PROJECT_TAG"])
         # needs a dependancy
-        s3_cleaner.node.add_dependency(kibana_bucket)
+        kibana_bucket_empty.node.add_dependency(kibana_bucket)
 
-        # the code from file to inline
-        with open(os.path.join(dirname, "lambda_update.py"), encoding="utf-8") as fp:
-            code_body = fp.read()
-
-        # the lambda behind the api
-        lambda_update = lambda_.SingletonFunction(
-            self,
-            "lambda_update",
-            uuid="f7d4f730-4ee2-31e8-9c2d-fa7ae01bbebc",
-            description="update kibana lambda env",
-            code=lambda_.InlineCode(code_body),
-            handler="index.main",
-            timeout=core.Duration.seconds(300),
-            runtime=lambda_.Runtime.PYTHON_3_7,
-        )
-        # tag the lamdbda
-        core.Tag.add(lambda_update, "project", constants["PROJECT_TAG"])
-        # needs a dependancy
-        lambda_update.node.add_dependency(kibana_distribution)
-        lambda_update.node.add_dependency(kibana_bucket)
-        # lambda update permissions
-        lambda_update.add_to_role_policy(
+        # kibana lambda update policies
+        kibana_lambda_update_policy = [
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=[
@@ -182,6 +158,21 @@ class KibanaStack(core.Stack):
                     "es:ListDomainNames",
                     "es:DescribeElasticsearchDomain",
                 ],
-                resources=["*"],
             )
+        ]
+        # create the kibana lambda update
+        kibana_lambda_update = CustomResource(
+            self,
+            "kibana_lambda_update",
+            Description="Update ENV vars for kibana api lambda",
+            PhysicalId="kibanaLambdaUpdate",
+            Uuid="f7d4f230-4ee1-07e8-9c2d-fa7ae06bbebc",
+            HandlerPath=os.path.join(dirname, "../helpers/lambda_env_update.py"),
+            ResourcePolicies=kibana_lambda_update_policy,
         )
+        # tag the lamdbda
+        core.Tag.add(kibana_lambda_update, "project", constants["PROJECT_TAG"])
+        # needs a dependancy
+        kibana_lambda_update.node.add_dependency(kibana_bucket)
+        kibana_lambda_update.node.add_dependency(kibana_distribution)
+

@@ -125,7 +125,7 @@ def error_response():
 
 def redirect_to_object(data: bytes, event: dict, content_type: str):
     data = BytesIO(data)
-    bucket_path = f'bucket-cached{event["path"]}'
+    bucket_path = f'bucket_cached{event["path"]}'
     s3.upload_fileobj(
         data, KIBANA_BUCKET, bucket_path, ExtraArgs={"ContentType": content_type}
     )
