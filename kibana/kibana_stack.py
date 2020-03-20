@@ -8,6 +8,7 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_cloudfront as cloudfront,
     aws_iam as iam,
+    aws_logs as logs,
 )
 import pathlib
 
@@ -51,6 +52,9 @@ class KibanaStack(core.Stack):
         # tag the bucket
         core.Tag.add(kibana_bucket, "project", constants["PROJECT_TAG"])
 
+        # bucket policy for origin
+        # https://github.com/aws/aws-cdk/issues/941
+
         # the lambda behind the api
         kibana_lambda = lambda_.Function(
             self,
@@ -62,6 +66,7 @@ class KibanaStack(core.Stack):
             runtime=lambda_.Runtime.PYTHON_3_8,
             vpc=vpc_stack.get_vpc,
             security_groups=[elastic_stack.elastic_security_group],
+            log_retention=logs.RetentionDays.ONE_WEEK,
         )
         # tag the lambda
         core.Tag.add(kibana_lambda, "project", constants["PROJECT_TAG"])
@@ -158,6 +163,7 @@ class KibanaStack(core.Stack):
                     "es:ListDomainNames",
                     "es:DescribeElasticsearchDomain",
                 ],
+                resources=["*"],
             )
         ]
         # create the kibana lambda update
@@ -175,4 +181,12 @@ class KibanaStack(core.Stack):
         # needs a dependancy
         kibana_lambda_update.node.add_dependency(kibana_bucket)
         kibana_lambda_update.node.add_dependency(kibana_distribution)
+
+        core.CfnOutput(
+            self,
+            "kibana_link",
+            value=f"https://{kibana_distribution.domain_name}/_plugin/kibana",
+            description="Kibana Web Url",
+            export_name="kibana-link",
+        )
 

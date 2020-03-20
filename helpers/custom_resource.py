@@ -1,5 +1,10 @@
 import os
-from aws_cdk import aws_cloudformation as cfn, aws_lambda as lambda_, core
+from aws_cdk import (
+    aws_cloudformation as cfn,
+    aws_lambda as lambda_,
+    core,
+    aws_logs as logs,
+)
 
 
 class CustomResource(core.Construct):
@@ -25,6 +30,7 @@ class CustomResource(core.Construct):
                     timeout=core.Duration.seconds(300),
                     runtime=lambda_.Runtime.PYTHON_3_7,
                     initial_policy=kwargs["ResourcePolicies"],
+                    log_retention=logs.RetentionDays.ONE_DAY,
                 )
             ),
             properties=kwargs,
