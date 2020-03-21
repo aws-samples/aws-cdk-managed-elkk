@@ -9,9 +9,10 @@ This repository contains an implimentation example of a managed ELKK stack using
 4. [Amazon Managed Streaming for Apache Kafka](#kafka)
 5. [Filebeat](#filebeat)
 6. [Amazon Elasticsearch Service](#elastic)
-7. [Amazon Athena](#athena)
-8. [Logstash](#logstash)
-9. [Clean up](#cleanup)
+7. [Kibana](#kibana)
+8. [Amazon Athena](#athena)
+9. [Logstash](#logstash)
+10. [Clean up](#cleanup)
 
 ## Context <a name="context"></a>
 
