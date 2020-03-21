@@ -44,11 +44,47 @@ Git -  https://git-scm.com/downloads
 python (3.6 or later) - https://www.python.org/downloads/  
 Docker - https://www.docker.com/  
 
-Terminal commands in this README are designed for a bash client.
+If not using Amazon Cloud9 jump to section "Create the Managed ELKK".
 
-### Set up the Environment
+### Amazon Cloud9 - Create Cloud9 Environment
 
-Clone the Git repository, create the python environment and install the python dependancies.
+If using Amazon Cloud9 then complete the following steps. 
+
+Open the cloud9 console: https://console.aws.amazon.com/cloud9
+
+On the Cloud9 home page:
+
+* Click: "Create Environment"
+
+On the "Name environment" screen:
+
+* Input "Name" = "managed-elkk".
+* Click "Next Step".
+
+On the "Configure settings" screen:
+
+* Select "Environment type" = "Create a new instance for environment (EC2)"
+* Select "Instance Type" = "t3.small (2 GiB RAM + 2 vCPU)"
+* Select "Platform" = "Amazon Linux"
+* Click "Next Step"
+
+On the "Review" screen:
+
+* Review the settings
+* Click "Create Environment"
+
+Cloud9 will report: "We are creating your AWS Cloud9 environment. This can take a few minutes."
+
+```bash
+# start from the environment directory
+cd ~/environment
+```
+
+### Create the Managed ELKK 
+
+Recommence here if not using Amazon Cloud9.
+
+Complete the following steps to set up the Managed ELKK workshop in your environment.
 
 ```bash
 # clone the repo
@@ -60,20 +96,24 @@ python -m venv .env
 # activate the virtual environment
 source .env/bin/activate
 # download requirements
-python -m pip install -r requirements.txt
+(.env)$ python -m pip install -r requirements.txt
 ```
 
 Create the EC2 SSH key pair allowing connections to Amazon EC2 instances.
 
+In all commands update "yourkeypair" with your chosen key pair name, and "yourregion" with your region name.
+
 ```bash
 # create the key pair (note that the key-name has no .pem, output text has .pem at the end)
-aws ec2 create-key-pair --key-name $yourkeypair --query 'KeyMaterial' --output text > $yourkeypair.pem --region $yourregion
+aws ec2 create-key-pair --key-name yourkeypair --query 'KeyMaterial' --output text > yourkeypair.pem --region yourregion
 # update key_pair permissions
-chmod 400 $yourkeypair.pem
+chmod 400 yourkeypair.pem
 # move key_pair to .ssh
-mv $yourkeypair.pem $HOME/.ssh/$yourkeypair.pem
+mv yourkeypair.pem $HOME/.ssh/yourkeypair.pem
+# start the ssh agent
+eval `ssh-agent -s`
 # add your key to keychain
-ssh-add -K ~/.ssh/$yourkeypair.pem 
+ssh-add -k ~/.ssh/yourkeypair.pem 
 ```
 
 The file helpers/constants.py contains configuration for the Managed ELKK stack. This configuration can be left as default, except for the KEY_PAIR value which needs to be updated to your key pair name.
@@ -85,7 +125,7 @@ constants = {
     # project level constants
     "PROJECT_TAG": "elkk-stack",
     # do not include the .pem in the keypair name
-    "KEY_PAIR": "$yourkeypair",
+    "KEY_PAIR": "yourkeypair",
     # kafka settings
     # etc
     # etc
@@ -93,9 +133,7 @@ constants = {
 }
 ```
 
-The file helpers/constants.py contains configuration for the Managed ELKK stack. This configuration can be left as default, except for the KEY_PAIR value which needs to be updated to your key pair name.
-
-Run all terminal commonds from the project root directory.
+Run all terminal commonds from the project root directory "managed-elkk".
 
 ### Boostrap the CDK
 
@@ -103,7 +141,7 @@ Create the CDK configuration by bootstrapping the CDK.
 
 ```bash
 # bootstrap the cdk
-cdk bootstrap aws://$youraccount/$yourregion
+cdk bootstrap aws://youraccount/yourregion
 ```
 
 -----
