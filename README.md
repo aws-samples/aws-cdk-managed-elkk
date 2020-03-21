@@ -111,11 +111,7 @@ $ python -m venv .env
 # activate the virtual environment
 $ source .env/bin/activate
 # download requirements
-<<<<<<< HEAD
-(.env)$ python3 -m pip install -r requirements.txt
-=======
 (.env)$ python -m pip install -r requirements.txt
->>>>>>> 10165bf23a80744dd7d6b3a8a03dd9fd962c060a
 ```
 
 Create the EC2 SSH key pair allowing connections to Amazon EC2 instances.
@@ -160,11 +156,7 @@ Create the CDK configuration by bootstrapping the CDK.
 
 ```bash
 # bootstrap the cdk
-<<<<<<< HEAD
-(.env)$ cdk bootstrap aws://$youraccount/$yourregion
-=======
 (.env)$ cdk bootstrap aws://youraccount/yourregion
->>>>>>> 10165bf23a80744dd7d6b3a8a03dd9fd962c060a
 ```
 
 -----
@@ -327,15 +319,9 @@ While connected to the Elastic EC2 instance:
 # get the elastic domain
 $ elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $elastic_domain
 # get the elastic endpoint
-<<<<<<< HEAD
-elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
-# curl a sample doc into elasticsearch
-curl -XPOST $elastic_endpoint/elkktopic/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
-=======
 $ elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # curl a doc into elasticsearch
 $ curl -XPOST $elastic_endpoint/elkktopic/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
->>>>>>> 10165bf23a80744dd7d6b3a8a03dd9fd962c060a
 # curl to query elasticsearch
 $ curl -XPOST $elastic_endpoint/elkktopic/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
 # count the records in the index
