@@ -56,39 +56,39 @@ Open the Cloud9 console: https://console.aws.amazon.com/cloud9
 
 On the Cloud9 home page:
 
-![Cloud 9 - Create Environment](/img/cloud9_idx_1.png)
-
 * Click: "Create Environment"
 
-On the "Name environment" screen:
+![Cloud 9 - Create Environment](/img/cloud9_idx_1.png)
 
-![Cloud 9 - Name Environment](/img/cloud9_idx_2.png)
+On the "Name environment" screen:
 
 * Input "Name" = "managed-elkk".
 * Click "Next Step".
 
-On the "Configure settings" screen:
+![Cloud 9 - Name Environment](/img/cloud9_idx_2.png)
 
-![Cloud 9 - Name Environment](/img/cloud9_idx_3.png)
+On the "Configure settings" screen:
 
 * Select "Environment type" = "Create a new instance for environment (EC2)"
 * Select "Instance Type" = "t3.small (2 GiB RAM + 2 vCPU)"
 * Select "Platform" = "Amazon Linux"
 
-![Cloud 9 - Name Environment](/img/cloud9_idx_4.png)
+![Cloud 9 - Name Environment](/img/cloud9_idx_3.png)
 
 * Click "Next Step"
 
-On the "Review" screen:
+![Cloud 9 - Name Environment](/img/cloud9_idx_4.png)
 
-![Cloud 9 - Name Environment](/img/cloud9_idx_5.png)
+On the "Review" screen:
 
 * Review the settings
 * Click "Create Environment"
 
-Cloud9 will report: "We are creating your AWS Cloud9 environment. This can take a few minutes."
+![Cloud 9 - Name Environment](/img/cloud9_idx_5.png)
 
 ![Cloud 9 - Name Environment](/img/cloud9_idx_6.png)
+
+Cloud9 will report: "We are creating your AWS Cloud9 environment. This can take a few minutes."
 
 ### Create the Managed ELKK 
 
@@ -98,7 +98,7 @@ Complete the following steps to set up the Managed ELKK workshop in your environ
 
 At a bash terminal session.
 
-![Terminal - Clne the repo](/img/create_elkk_idx_1.png)
+![Terminal - Clone the repo](/img/create_elkk_idx_1.png)
 
 ```bash
 # clone the repo
