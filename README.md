@@ -110,6 +110,11 @@ $ cd managed_elkk
 $ python -m venv .env
 # activate the virtual environment
 $ source .env/bin/activate
+```
+
+![Terminal - Activate ENV](/img/activate_env_idx_1.png)
+
+```bash
 # download requirements
 (.env)$ python -m pip install -r requirements.txt
 ```
@@ -148,7 +153,7 @@ constants = {
 }
 ```
 
-Run all terminal commonds from the project root directory "managed-elkk".
+![Terminal - Update constants.py](/img/constants_py_idx_1.png)
 
 ### Boostrap the CDK
 
