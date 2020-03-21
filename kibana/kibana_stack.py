@@ -101,7 +101,14 @@ class KibanaStack(core.Stack):
                         origin_protocol_policy=cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
                     ),
                     origin_path="/prod",
-                    behaviors=[cloudfront.Behavior(is_default_behavior=True)],
+                    behaviors=[
+                        cloudfront.Behavior(
+                            is_default_behavior=True,
+                            allowed_methods=cloudfront.CloudFrontAllowedMethods.ALL,
+                            cached_methods=cloudfront.CloudFrontAllowedCachedMethods.GET_HEAD_OPTIONS,
+                            compress=False,
+                        )
+                    ],
                 ),
                 # the s3 bucket source for kibana
                 cloudfront.SourceConfiguration(
@@ -111,7 +118,11 @@ class KibanaStack(core.Stack):
                     ),
                     behaviors=[
                         cloudfront.Behavior(
-                            is_default_behavior=False, path_pattern="bucket_cached/*"
+                            is_default_behavior=False,
+                            path_pattern="bucket_cached/*",
+                            allowed_methods=cloudfront.CloudFrontAllowedMethods.ALL,
+                            cached_methods=cloudfront.CloudFrontAllowedCachedMethods.GET_HEAD_OPTIONS,
+                            compress=False,
                         )
                     ],
                 ),
