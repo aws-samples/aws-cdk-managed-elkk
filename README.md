@@ -87,9 +87,9 @@ On the "Review" screen:
 
 ![Cloud 9 - Name Environment](/img/cloud9_idx_5.png)
 
-![Cloud 9 - Name Environment](/img/cloud9_idx_6.png)
-
 Cloud9 will report: "We are creating your AWS Cloud9 environment. This can take a few minutes."
+
+![Cloud 9 - Name Environment](/img/cloud9_idx_6.png)
 
 ### Create the Managed ELKK 
 
@@ -348,6 +348,18 @@ Create an SSH tunnel to Kibana.
 Leave the tunnel terminal window open.
 
 Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana.
+
+-----
+## Kibana <a name=kibana></a>
+
+Kibana is deployed on the Amazon Elasticsearch Service within the VPC. To allow connections to the Kibana dashboard deploy a public endpoint using Amazon API Gateway, AWS Lambda, Amazon Cloudfront, and Amazon S3.
+
+```bash
+# deploy the kibana endpoint
+(.env)$ cdk deploy elkk-kibana
+```
+
+The Kibana url is outout by the AWS CDK as "elkk-kibana.kibanalink. Click on the link to nativate to Kibana.
 
 To view the records on the Kibana dashboard an "index pattern" needs to be created.
 
