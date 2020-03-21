@@ -31,8 +31,11 @@ class KibanaStack(core.Stack):
     ) -> None:
         super().__init__(scope, id_, **kwargs)
 
-        # if update lambda zip
-        if update_lambda_zip:
+        # if update lambda zip (including if zip doesn't exist)
+        if (
+            update_lambda_zip
+            or not pathlib.Path(os.path.join(dirname, "kibana_lambda.zip")).exists()
+        ):
             # rebuild the lambda if changed
             call(["docker", "build", "--tag", "kibana-lambda", "."], cwd=dirname)
             call(
@@ -51,9 +54,6 @@ class KibanaStack(core.Stack):
         )
         # tag the bucket
         core.Tag.add(kibana_bucket, "project", constants["PROJECT_TAG"])
-
-        # bucket policy for origin
-        # https://github.com/aws/aws-cdk/issues/941
 
         # the lambda behind the api
         kibana_lambda = lambda_.Function(

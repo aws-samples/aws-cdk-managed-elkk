@@ -63,7 +63,7 @@ On the Cloud9 home page:
 
 On the "Name environment" screen:
 
-* Input "Name" = "managed-elkk".
+* Input "Name" = "elkk-workshop".
 * Click "Next Step".
 
 ![Cloud 9 - Name Environment](/img/cloud9_idx_2.png)
@@ -364,7 +364,7 @@ Kibana is deployed on the Amazon Elasticsearch Service within the VPC. To allow 
 (.env)$ cdk deploy elkk-kibana
 ```
 
-The Kibana url is outout by the AWS CDK as "elkk-kibana.kibanalink. Click on the link to nativate to Kibana.
+The Kibana url is output by the AWS CDK as "elkk-kibana.kibanalink. Click on the link to nativate to Kibana.
 
 To view the records on the Kibana dashboard an "index pattern" needs to be created.
 
