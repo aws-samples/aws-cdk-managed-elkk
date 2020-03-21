@@ -9,9 +9,10 @@ This repository contains an implimentation example of a managed ELKK stack using
 4. [Amazon Managed Streaming for Apache Kafka](#kafka)
 5. [Filebeat](#filebeat)
 6. [Amazon Elasticsearch Service](#elastic)
-7. [Amazon Athena](#athena)
-8. [Logstash](#logstash)
-9. [Clean up](#cleanup)
+7. [Kibana](#kibana)
+8. [Amazon Athena](#athena)
+9. [Logstash](#logstash)
+10. [Clean up](#cleanup)
 
 ## Context <a name="context"></a>
 
@@ -295,6 +296,18 @@ ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443 -4
 Leave the tunnel terminal window open.
 
 Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana.
+
+-----
+## Kibana <a name=kibana></a>
+
+Kibana is deployed on the Amazon Elasticsearch Service within the VPC. To allow connections to the Kibana dashboard deploy a public endpoint using Amazon API Gateway, AWS Lambda, Amazon Cloudfront, and Amazon S3.
+
+```bash
+# deploy the kibana endpoint
+(.env)$ cdk deploy elkk-kibana
+```
+
+The Kibana url is outout by the AWS CDK as "elkk-kibana.kibanalink. Click on the link to nativate to Kibana.
 
 To view the records on the Kibana dashboard an "index pattern" needs to be created.
 
