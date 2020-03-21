@@ -38,17 +38,17 @@ Amazon Athena supports SQL queries against log data stored in Amazon S3.
 
 The following tools are required to deploy this Amazon Managed ELKK stack.
 
+If using AWS Cloud9 skip to section "AWS Cloud9 - Create Cloud9 Environment" below.
+
 AWS CDK - https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html  
 AWS CLI - https://aws.amazon.com/cli/  
 Git -  https://git-scm.com/downloads  
 python (3.6 or later) - https://www.python.org/downloads/  
 Docker - https://www.docker.com/  
 
-If not using Amazon Cloud9 jump to section "Create the Managed ELKK".
+If not using AWS Cloud9 skip to section "Create the Managed ELKK".
 
-### Amazon Cloud9 - Create Cloud9 Environment
-
-If using Amazon Cloud9 then complete the following steps. 
+### AWS Cloud9 - Create Cloud9 Environment
 
 Open the cloud9 console: https://console.aws.amazon.com/cloud9
 
@@ -75,26 +75,23 @@ On the "Review" screen:
 
 Cloud9 will report: "We are creating your AWS Cloud9 environment. This can take a few minutes."
 
-```bash
-# start from the environment directory
-cd ~/environment
-```
-
 ### Create the Managed ELKK 
 
 Recommence here if not using Amazon Cloud9.
 
 Complete the following steps to set up the Managed ELKK workshop in your environment.
 
+At a bash terminal session.
+
 ```bash
 # clone the repo
-git clone https://github.com/fmcmac/elk-stack.git managed_elkk
+$ git clone https://github.com/fmcmac/elk-stack.git managed_elkk
 # move to directory
-cd managed_elkk
+$ cd managed_elkk
 # create the virtual environment
-python -m venv .env
+$ python -m venv .env
 # activate the virtual environment
-source .env/bin/activate
+$ source .env/bin/activate
 # download requirements
 (.env)$ python -m pip install -r requirements.txt
 ```
@@ -105,15 +102,15 @@ In all commands update "yourkeypair" with your chosen key pair name, and "yourre
 
 ```bash
 # create the key pair (note that the key-name has no .pem, output text has .pem at the end)
-aws ec2 create-key-pair --key-name yourkeypair --query 'KeyMaterial' --output text > yourkeypair.pem --region yourregion
+(.env)$ aws ec2 create-key-pair --key-name yourkeypair --query 'KeyMaterial' --output text > yourkeypair.pem --region yourregion
 # update key_pair permissions
-chmod 400 yourkeypair.pem
+(.env)$ chmod 400 yourkeypair.pem
 # move key_pair to .ssh
-mv yourkeypair.pem $HOME/.ssh/yourkeypair.pem
+(.env)$ mv yourkeypair.pem $HOME/.ssh/yourkeypair.pem
 # start the ssh agent
-eval `ssh-agent -s`
+(.env)$ eval `ssh-agent -s`
 # add your key to keychain
-ssh-add -k ~/.ssh/yourkeypair.pem 
+(.env)$ ssh-add -k ~/.ssh/yourkeypair.pem 
 ```
 
 The file helpers/constants.py contains configuration for the Managed ELKK stack. This configuration can be left as default, except for the KEY_PAIR value which needs to be updated to your key pair name.
@@ -141,7 +138,7 @@ Create the CDK configuration by bootstrapping the CDK.
 
 ```bash
 # bootstrap the cdk
-cdk bootstrap aws://youraccount/yourregion
+(.env)$ cdk bootstrap aws://youraccount/yourregion
 ```
 
 -----
@@ -153,7 +150,7 @@ Use the AWS CDK to deploy an Amazon VPC across multiple availability zones.
 
 ```bash
 # deploy the vpc stack
-cdk deploy elkk-vpc
+(.env)$ cdk deploy elkk-vpc
 ```
 
 -----
@@ -165,7 +162,7 @@ Use the AWS CDK to deploy an Amazon MSK Cluster into the VPC.
 
 ```bash
 # deploy the kafka stack
-cdk deploy elkk-kafka
+(.env)$ cdk deploy elkk-kafka
 ```
 
 When Client is set to True an Amazon EC2 instance is deployed to interact with the Amazon MSK Cluster. It can take up to 30 minutes for the Amazon MSK cluster and client EC2 instance to be deployed.
@@ -178,20 +175,20 @@ Open a terminal window to connect to the Kafka client Amazon EC2 instance and cr
 
 ```bash
 # get the ec2 instance public dns
-kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
+(.env)$ kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
 # use the public dns to connect to the amazon ec2 instance
-ssh ec2-user@$kafka_client_dns
+(.env)$ ssh ec2-user@$kafka_client_dns
 ```
 
 While connected to the Kafka client EC2 instance create the Kafka producer session on the elkktopic Kafka topic:
 
 ```bash
 # Get the cluster ARN
-kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
+$ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
 # Get the bootstrap brokers
-kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
+$ kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a producer on the Kakfa topic "elkktopic" 
-/opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkktopic
+$ /opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkktopic
 ```
 
 Leave the Kafka producer session window open.  
@@ -200,20 +197,20 @@ Open a terminal window and connect to the Kafka client EC2 instance to create a 
 
 ```bash
 # get the ec2 instance public dns
-kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
+(.env)$ kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
 # use the public dns to connect to the ec2 instance
-ssh ec2-user@$kafka_client_dns
+(.env)$ ssh ec2-user@$kafka_client_dns
 ```
 
 While connected to the Kafka client EC2 instance create the consumer session on the elkktopic Kafka topic.
 
 ```bash
 # Get the cluster ARN
-kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
+$ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
 # Get the bootstrap brokers
-kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
+$ kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a consumer
-/opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkktopic --from-beginning
+$ /opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkktopic --from-beginning
 ```
 
 Leave the Kafka consumer session window open.
@@ -233,7 +230,7 @@ Use the AWS CDK to create an Amazon EC2 instance installed with Filebeat and a d
 
 ```bash
 # deploy the Filebeat stack
-cdk deploy elkk-filebeat
+(.env)$ cdk deploy elkk-filebeat
 ```
 
 An Amazon EC2 instance is deployed with Filebeat installed and configured to output to Kafka.  
@@ -244,16 +241,16 @@ Open a new terminal window connect to the Filebeat EC2 instance and create creat
 
 ```bash
 # get the Filebeat ec2 instance public dns
-filebeat_dns=`aws ec2 describe-instances --filter file://filebeat/filebeat_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $filebeat_dns
+(.env)$ filebeat_dns=`aws ec2 describe-instances --filter file://filebeat/filebeat_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $filebeat_dns
 # use the public dns to connect to the filebeat ec2 instance
-ssh ec2-user@$filebeat_dns
+(.env)$ ssh ec2-user@$filebeat_dns
 ```
 
 While connected to the Filebeat EC2 instance create dummy logs:
 
 ```bash
 # generate dummy apache logs with log generator
-./log_generator.py
+$ ./log_generator.py
 ```
 
 Dummy logs created by the log generator will be written to the apachelog folder. Filebeat will harvest the logs and publish them to the Amazon MSK cluster.
@@ -264,11 +261,11 @@ Create Kafka consumer session on the apachelog Kafka topic.
 
 ```bash
 # Get the cluster ARN
-kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
+$ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
 # Get the bootstrap brokers
-kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
+$ kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a consumer
-/opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic apachelog --from-beginning
+$ /opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic apachelog --from-beginning
 ```
 
 Messages generated by the log generator should appear in the Kafka consumer terminal window.
@@ -280,7 +277,7 @@ The Amazon Elasticsearch Service provides an Elasticsearch domain and Kibana das
 
 ```bash
 # deploy the elastic stack
-cdk deploy elkk-elastic
+(.env)$ cdk deploy elkk-elastic
 ```
 
 An Amazon EC2 instance is deployed to interact with the Amazon Elasticsearch Service domain.
@@ -293,26 +290,26 @@ Connect to the EC2 instance using a terminal window:
 
 ```bash
 # get the elastic ec2 instance public dns
-elastic_dns=`aws ec2 describe-instances --filter file://elastic/elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
+(.env)$ elastic_dns=`aws ec2 describe-instances --filter file://elastic/elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
 # use the public dns to connect to the elastic ec2 instance
-ssh ec2-user@$elastic_dns
+(.env)$ ssh ec2-user@$elastic_dns
 ```
 
 While connected to the Elastic EC2 instance:
 
 ```bash
 # get the elastic domain
-elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $elastic_domain
+$ elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $elastic_domain
 # get the elastic endpoint
-elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
+$ elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # curl a doc into elasticsearch
-curl -XPOST $elastic_endpoint/elkktopic/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
+$ curl -XPOST $elastic_endpoint/elkktopic/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
 # curl to query elasticsearch
-curl -XPOST $elastic_endpoint/elkktopic/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
+$ curl -XPOST $elastic_endpoint/elkktopic/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
 # count the records in the index
-curl -GET $elastic_endpoint/elkktopic/_count
+$ curl -GET $elastic_endpoint/elkktopic/_count
 # exit the Elastic ec2 instance
-exit
+$ exit
 ```
 
 Amazon Elasticsearch Service has been deployed within a VPC in a private subnet. To accss Kibana we need to create a tunnel into the private subnet.
@@ -321,13 +318,13 @@ Create an SSH tunnel to Kibana.
 
 ```bash
 # get the elastic ec2 instance public dns
-elastic_dns=`aws ec2 describe-instances --filter file://elastic/elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
+(.env)$ elastic_dns=`aws ec2 describe-instances --filter file://elastic/elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
 # get the elastic domain
-elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $elastic_domain
+(.env)$ elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $elastic_domain
 # get the elastic endpoint
-elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
+(.env)$ elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # create the tunnel
-ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443 -4
+(.env)$ ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443 -4
 ```
 
 Leave the tunnel terminal window open.
@@ -367,7 +364,7 @@ Amazon Simple Storage Service is used to storage logs for longer term storage. A
 
 ```bash
 # deploy the athena stack
-cdk deploy elkk-athena
+(.env)$ cdk deploy elkk-athena
 ```
 
 -----
@@ -397,7 +394,7 @@ logstash_stack = LogstashStack(
 When we deploy the elkk-stack we will be deploying Logstash on an Amazon EC2 instance.
 
 ```bash
-cdk deploy elkk-logstash
+(.env)$ cdk deploy elkk-logstash
 ```
 
 An Amazon EC2 instance is deployed with Logstash installed and configured with an input from Kafka and output to Elasticsearch and s3.
@@ -408,25 +405,25 @@ Connect to the Logstash EC2 instance using a terminal window:
 
 ```bash
 # get the logstash instance public dns
-logstash_dns=`aws ec2 describe-instances --filter file://logstash/logstash_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $logstash_dns
+$ logstash_dns=`aws ec2 describe-instances --filter file://logstash/logstash_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $logstash_dns
 # use the public dns to connect to the logstash instance
-ssh ec2-user@$logstash_dns
+$ ssh ec2-user@$logstash_dns
 ```
 
 While connected to logstash EC2 instance:
 
 ```bash
 # verify the logstash config, the last line should contain "Config Validation Result: OK. Exiting Logstash"
-/usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.d/logstash.conf
+$ /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.d/logstash.conf
 # check the logstash status
-service logstash status -l
+$ service logstash status -l
 ```
 
 In the Filebeat EC2 instance generate new logfiles
 
 ```bash
 # geneate new logs
-./log_generator.py
+$ ./log_generator.py
 ```
 
 Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated.
@@ -463,7 +460,7 @@ logstash_stack = LogstashStack(
 Deploy the updated stack, terminating the Logstash EC2 instance and creating a Logstash service on AWS Fargate.
 
 ```bash
-cdk deploy elkk-logstash
+(.env)$ cdk deploy elkk-logstash
 ```
 
 The logstash EC2 instance will be terminated and an AWS Fargate cluster will be created. Logstash will be deployed as containerized tasks.
@@ -472,7 +469,7 @@ In the Filebeat EC2 instance generate new logfiles.
 
 ```bash
 # geneate new logs, the -f 20 will generate 20 files at 30 second intervals
-./log_generator.py -f 20
+$ ./log_generator.py -f 20
 ```
 
 Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated. They will appear in the Dashboard for Apache Logs as they are generated.
@@ -489,5 +486,5 @@ To clean up the stacks... destroy the elkk-vpc stack, all other stacks will be t
 Cloudwatch logs will need to be separately removed.
 
 ```bash
-cdk destroy elkk-vpc
+(.env)$ cdk destroy elkk-vpc
 ```
