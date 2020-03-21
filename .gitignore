@@ -146,3 +146,4 @@ cdk.out/
 *.asset
 *apachelog*
 *appevent*
+*.zip
