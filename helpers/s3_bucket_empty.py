@@ -1,4 +1,6 @@
 def main(event, context):
+
+    # get modules
     import logging as log
     import cfnresponse
     import boto3
@@ -7,7 +9,7 @@ def main(event, context):
 
     # This needs to change if there are to be multiple resources
     # in the same stack
-    physical_id = "TheOnlyCustomResource"
+    physical_id = event["ResourceProperties"]["PhysicalId"]
 
     try:
         log.info(f"Input event: {event}")
@@ -20,13 +22,13 @@ def main(event, context):
 
         # Delete objects from the bucket if event is delete
         if event["RequestType"] == "Delete":
-            bucket = boto3.resource("s3").Bucket(event["ResourceProperties"]["BucketName"])
+            bucket = boto3.resource("s3").Bucket(
+                event["ResourceProperties"]["BucketName"]
+            )
             bucket.objects.all().delete()
 
         # do some reporting
-        attributes = {
-            "Response": f'{event["ResourceProperties"]["BucketName"]}'
-        }
+        attributes = {"Response": f'{event["ResourceProperties"]["BucketName"]}'}
 
         cfnresponse.send(event, context, cfnresponse.SUCCESS, attributes, physical_id)
     except Exception as e:

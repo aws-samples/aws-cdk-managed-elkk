@@ -15,7 +15,6 @@ from helpers.functions import (
 )
 import urllib.request
 
-dirname = os.path.dirname(__file__)
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 
@@ -54,29 +53,29 @@ class ElasticStack(core.Stack):
         )
 
         # security group for elastic
-        elastic_security_group = ec2.SecurityGroup(
+        self.elastic_security_group = ec2.SecurityGroup(
             self,
             "elastic_security_group",
             vpc=vpc_stack.get_vpc,
             description="elastic security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(elastic_security_group, "project", constants["PROJECT_TAG"])
-        core.Tag.add(elastic_security_group, "Name", "elastic_sg")
+        core.Tag.add(self.elastic_security_group, "project", constants["PROJECT_TAG"])
+        core.Tag.add(self.elastic_security_group, "Name", "elastic_sg")
 
         # ingress for elastic from self
-        elastic_security_group.connections.allow_from(
-            elastic_security_group, ec2.Port.all_traffic(), "within elastic",
+        self.elastic_security_group.connections.allow_from(
+            self.elastic_security_group, ec2.Port.all_traffic(), "within elastic",
         )
         # ingress for elastic from elastic client
-        elastic_security_group.connections.allow_from(
+        self.elastic_security_group.connections.allow_from(
             elastic_client_security_group,
             ec2.Port.all_traffic(),
             "from elastic client",
         )
         # ingress for elastic client from elastic
         elastic_client_security_group.connections.allow_from(
-            elastic_security_group, ec2.Port.all_traffic(), "from elastic",
+            self.elastic_security_group, ec2.Port.all_traffic(), "from elastic",
         )
 
         # elastic policy
@@ -100,19 +99,19 @@ class ElasticStack(core.Stack):
             cluster_config["dedicatedMasterCount"] = constants["ELASTIC_MASTER_COUNT"]
 
         # create the elastic cluster
-        elastic_domain = aes.CfnDomain(
+        self.elastic_domain = aes.CfnDomain(
             self,
             "elastic_domain",
             elasticsearch_cluster_config=cluster_config,
             elasticsearch_version=constants["ELASTIC_VERSION"],
             ebs_options={"ebsEnabled": True, "volumeSize": 10},
             vpc_options={
-                "securityGroupIds": [elastic_security_group.security_group_id],
+                "securityGroupIds": [self.elastic_security_group.security_group_id],
                 "subnetIds": vpc_stack.get_vpc_private_subnet_ids,
             },
             access_policies=elastic_document,
         )
-        core.Tag.add(elastic_domain, "project", constants["PROJECT_TAG"])
+        core.Tag.add(self.elastic_domain, "project", constants["PROJECT_TAG"])
 
         # instance for elasticsearch
         if client == True:
@@ -134,7 +133,7 @@ class ElasticStack(core.Stack):
             )
             core.Tag.add(elastic_instance, "project", constants["PROJECT_TAG"])
             # needs elastic domain to be available
-            elastic_instance.node.add_dependency(elastic_domain)
+            elastic_instance.node.add_dependency(self.elastic_domain)
             # create policies for EC2 to connect to Elastic
             access_elastic_policy = iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,

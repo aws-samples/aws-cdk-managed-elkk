@@ -48,12 +48,12 @@ class LogstashStack(core.Stack):
                 bkt_tags = s3client.get_bucket_tagging(Bucket=bkt["Name"])["TagSet"]
                 for keypairs in bkt_tags:
                     if (
-                        keypairs["Key"] == "project"
-                        and keypairs["Value"] == "elkk-stack"
+                        keypairs["Key"] == "aws:cloudformation:stack-name"
+                        and keypairs["Value"] == "elkk-athena"
                     ):
                         s3_bucket_name = bkt["Name"]
             except ClientError as err:
-                if err.response["Error"]["Code"] == "NoSuchTagSet":
+                if err.response["Error"]["Code"] in ["NoSuchTagSet", "NoSuchBucket"]:
                     pass
                 else:
                     print(f"Unexpectedd error: {err}")
@@ -260,7 +260,7 @@ class LogstashStack(core.Stack):
             logstash_logs_containers = logs.LogGroup(
                 self,
                 "logstash_logs_containers",
-                log_group_name="/elkk/logstash/container",
+                log_group_name="elkk/logstash/container",
                 removal_policy=core.RemovalPolicy.DESTROY,
                 retention=logs.RetentionDays.ONE_WEEK,
             )

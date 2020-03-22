@@ -63,7 +63,7 @@ On the Cloud9 home page:
 
 On the "Name environment" screen:
 
-* Input "Name" = "managed-elkk".
+* Input "Name" = "elkk-workshop".
 * Click "Next Step".
 
 ![Cloud 9 - Name Environment](/img/cloud9_idx_2.png)
@@ -91,7 +91,74 @@ Cloud9 will report: "We are creating your AWS Cloud9 environment. This can take 
 
 ![Cloud 9 - Name Environment](/img/cloud9_idx_6.png)
 
+The Cloud9 instance will need some additional size for the Managed ELKK project. To increase the Amazon EBS volume to 50GB complete the following steps (additional details can be found at: https://docs.aws.amazon.com/cloud9/latest/user-guide/move-environment.html).
+
+Create a new file in Cloud9:
+
+![Cloud 9 - New fileame](/img/cloud9_idx_7.png)
+
+Paste in the below content and save the file.
+
+```sh
+#!/bin/bash
+
+# Specify the desired volume size in GiB as a command-line argument. If not specified, default to 20 GiB.
+SIZE=${1:-20}
+
+# Install the jq command-line JSON processor.
+sudo yum -y install jq
+
+# Get the ID of the envrionment host Amazon EC2 instance.
+INSTANCEID=$(curl http://169.254.169.254/latest/meta-data//instance-id)
+
+# Get the ID of the Amazon EBS volume associated with the instance.
+VOLUMEID=$(aws ec2 describe-instances --instance-id $INSTANCEID | jq -r .Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
+
+# Resize the EBS volume.
+aws ec2 modify-volume --volume-id $VOLUMEID --size $SIZE
+
+# Wait for the resize to finish.
+while [ "$(aws ec2 describe-volumes-modifications --volume-id $VOLUMEID --filters Name=modification-state,Values="optimizing","completed" | jq '.VolumesModifications | length')" != "1" ]; do
+  sleep 1
+done
+
+# Rewrite the partition table so that the partition takes up all the space that it can.
+sudo growpart /dev/xvda 1
+
+# Expand the size of the file system.
+sudo resize2fs /dev/xvda1
+```
+
+![Cloud 9 - Save fileame](/img/cloud9_idx_8.png)
+
+Save the file as "resize.sh".
+
+![Cloud 9 - Save As](/img/cloud9_idx_9.png)
+
+Execute the resize script with the command:
+
+```bash
+# run resize script
+sh resize.sh 50
+```
+
+![Cloud 9 - Execute resize](/img/cloud9_idx_10.png)
+
+The Cloud9 instance needs to be rebooted for the resize to be effected. Run the command below:
+
+```bash
+# execute instance restart
+sudo reboot
+```
+
+![Cloud 9 - Reboot](/img/cloud9_idx_11.png)
+
+Cloud9 will restart, wait a few minutes and then refresh the page.
+
+![Cloud 9 - Wait](/img/cloud9_idx_12.png)
+
 ### Create the Managed ELKK 
+
 
 Recommence here if not using AWS Cloud9.
 
@@ -110,6 +177,11 @@ $ cd managed_elkk
 $ python -m venv .env
 # activate the virtual environment
 $ source .env/bin/activate
+```
+
+![Terminal - Activate ENV](/img/activate_env_idx_1.png)
+
+```bash
 # download requirements
 (.env)$ python -m pip install -r requirements.txt
 ```
@@ -148,7 +220,7 @@ constants = {
 }
 ```
 
-Run all terminal commonds from the project root directory "managed-elkk".
+![Terminal - Update constants.py](/img/constants_py_idx_1.png)
 
 ### Boostrap the CDK
 
@@ -330,36 +402,33 @@ $ curl -GET $elastic_endpoint/elkktopic/_count
 $ exit
 ```
 
-Amazon Elasticsearch Service has been deployed within a VPC in a private subnet. To accss Kibana we need to create a tunnel into the private subnet.
-
-Create an SSH tunnel to Kibana.
-
-```bash
-# get the elastic ec2 instance public dns
-(.env)$ elastic_dns=`aws ec2 describe-instances --filter file://elastic/elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
-# get the elastic domain
-(.env)$ elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $elastic_domain
-# get the elastic endpoint
-(.env)$ elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
-# create the tunnel
-(.env)$ ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443 -4
-```
-
-Leave the tunnel terminal window open.
-
-Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana.
-
 -----
 ## Kibana <a name=kibana></a>
 
-Kibana is deployed on the Amazon Elasticsearch Service within the VPC. To allow connections to the Kibana dashboard deploy a public endpoint using Amazon API Gateway, AWS Lambda, Amazon Cloudfront, and Amazon S3.
+Amazon Elasticsearch Service has been deployed within a VPC in a private subnet. To allow connections to the Kibana dashboard we deploy a public endpoint using Amazon API Gateway, AWS Lambda, Amazon Cloudfront, and Amazon S3.
 
 ```bash
 # deploy the kibana endpoint
 (.env)$ cdk deploy elkk-kibana
 ```
 
-The Kibana url is outout by the AWS CDK as "elkk-kibana.kibanalink. Click on the link to nativate to Kibana.
+![Select Managment](/img/kibana_stack_idx_1.png)
+
+When prompted "Do you wish to deploy these changes?", enter "y" for Yes.
+
+![Select Managment](/img/kibana_stack_idx_2.png)
+
+When the deployment is complete the Kibana url is output by the AWS CDK as "elkk-kibana.kibanalink. Click on the link to nativate to Kibana.
+
+![Select Managment](/img/kibana_stack_idx_3.png)
+
+Open the link.
+
+![Select Managment](/img/kibana_stack_idx_4.png)
+
+The Kibana Dashboard is visible.
+
+![Select Managment](/img/kibana_stack_idx_5.png)
 
 To view the records on the Kibana dashboard an "index pattern" needs to be created.
 
@@ -449,7 +518,7 @@ $ /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.
 $ service logstash status -l
 ```
 
-In the Filebeat EC2 instance generate new logfiles
+In the Filebeat EC2 instance generate new log files.
 
 ```bash
 # geneate new logs

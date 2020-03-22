@@ -37,7 +37,7 @@ class AthenaStack(core.Stack):
         core.Tag.add(self.s3_bucket, "project", constants["PROJECT_TAG"])
 
         # lambda policies
-        s3_cleaner_policies = [
+        athena_bucket_empty_policy = [
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW, actions=["s3:ListBucket"], resources=["*"],
             ),
@@ -49,15 +49,18 @@ class AthenaStack(core.Stack):
         ]
 
         # create the custom resource
-        s3_cleaner = CustomResource(
+        athena_bucket_empty = CustomResource(
             self,
-            "s3_cleaner",
-            HandlerPath=os.path.join(dirname, "s3_cleaner_handler.py"),
+            "athena_bucket_empty",
+            PhysicalId="athenaBucketEmpty",
+            Description="Empty athena s3 bucket",
+            Uuid="f7d4f730-4ee1-11e8-9c2d-fa7ae01bbebc",
+            HandlerPath=os.path.join(dirname, "../helpers/s3_bucket_empty.py"),
             BucketName=self.s3_bucket.bucket_name,
-            ResourcePolicies=s3_cleaner_policies,
+            ResourcePolicies=athena_bucket_empty_policy,
         )
         # needs a dependancy
-        s3_cleaner.node.add_dependency(self.s3_bucket)
+        athena_bucket_empty.node.add_dependency(self.s3_bucket)
 
     # properties
     @property

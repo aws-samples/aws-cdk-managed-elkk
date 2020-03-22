@@ -1,11 +1,16 @@
 import os
-from aws_cdk import aws_cloudformation as cfn, aws_lambda as lambda_, core
-
-dirname = os.path.dirname(__file__)
+from aws_cdk import (
+    aws_cloudformation as cfn,
+    aws_lambda as lambda_,
+    core,
+    aws_logs as logs,
+)
 
 
 class CustomResource(core.Construct):
-    def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
+    def __init__(
+        self, scope: core.Construct, id: str, Description: str, Uuid: str, **kwargs
+    ) -> None:
         super().__init__(scope, id)
 
         with open(kwargs["HandlerPath"], encoding="utf-8") as fp:
@@ -18,12 +23,14 @@ class CustomResource(core.Construct):
                 lambda_.SingletonFunction(
                     self,
                     "Singleton",
-                    uuid="f7d4f730-4ee1-11e8-9c2d-fa7ae01bbebc",
+                    description=Description,
+                    uuid=Uuid,
                     code=lambda_.InlineCode(code_body),
                     handler="index.main",
                     timeout=core.Duration.seconds(300),
                     runtime=lambda_.Runtime.PYTHON_3_7,
                     initial_policy=kwargs["ResourcePolicies"],
+                    log_retention=logs.RetentionDays.ONE_DAY,
                 )
             ),
             properties=kwargs,

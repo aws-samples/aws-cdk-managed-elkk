@@ -8,7 +8,6 @@ from aws_cdk import (
     aws_iam as iam,
     aws_s3_assets as assets,
 )
-import boto3
 from helpers.functions import (
     file_updated,
     kafka_get_brokers,
