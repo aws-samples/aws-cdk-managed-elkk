@@ -402,36 +402,33 @@ $ curl -GET $elastic_endpoint/elkktopic/_count
 $ exit
 ```
 
-Amazon Elasticsearch Service has been deployed within a VPC in a private subnet. To accss Kibana we need to create a tunnel into the private subnet.
-
-Create an SSH tunnel to Kibana.
-
-```bash
-# get the elastic ec2 instance public dns
-(.env)$ elastic_dns=`aws ec2 describe-instances --filter file://elastic/elastic_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $elastic_dns
-# get the elastic domain
-(.env)$ elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $elastic_domain
-# get the elastic endpoint
-(.env)$ elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
-# create the tunnel
-(.env)$ ssh ec2-user@$elastic_dns -N -L 9200:$elastic_endpoint:443 -4
-```
-
-Leave the tunnel terminal window open.
-
-Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana.
-
 -----
 ## Kibana <a name=kibana></a>
 
-Kibana is deployed on the Amazon Elasticsearch Service within the VPC. To allow connections to the Kibana dashboard deploy a public endpoint using Amazon API Gateway, AWS Lambda, Amazon Cloudfront, and Amazon S3.
+Amazon Elasticsearch Service has been deployed within a VPC in a private subnet. To allow connections to the Kibana dashboard we deploy a public endpoint using Amazon API Gateway, AWS Lambda, Amazon Cloudfront, and Amazon S3.
 
 ```bash
 # deploy the kibana endpoint
 (.env)$ cdk deploy elkk-kibana
 ```
 
-The Kibana url is output by the AWS CDK as "elkk-kibana.kibanalink. Click on the link to nativate to Kibana.
+![Select Managment](/img/kibana_stack_idx_1.png)
+
+When prompted "Do you wish to deploy these changes?", enter "y" for Yes.
+
+![Select Managment](/img/kibana_stack_idx_2.png)
+
+When the deployment is complete the Kibana url is output by the AWS CDK as "elkk-kibana.kibanalink. Click on the link to nativate to Kibana.
+
+![Select Managment](/img/kibana_stack_idx_3.png)
+
+Open the link.
+
+![Select Managment](/img/kibana_stack_idx_4.png)
+
+The Kibana Dashboard is visible.
+
+![Select Managment](/img/kibana_stack_idx_5.png)
 
 To view the records on the Kibana dashboard an "index pattern" needs to be created.
 
