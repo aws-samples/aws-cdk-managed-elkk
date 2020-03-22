@@ -134,7 +134,7 @@ class KibanaStack(core.Stack):
                             is_default_behavior=False,
                             path_pattern="bucket_cached/*",
                             allowed_methods=cloudfront.CloudFrontAllowedMethods.GET_HEAD,
-                            cached_methods=cloudfront.CloudFrontAllowedCachedMethods.GET_HEAD_OPTIONS,
+                            cached_methods=cloudfront.CloudFrontAllowedCachedMethods.GET_HEAD,
                             compress=True,
                         )
                     ],
