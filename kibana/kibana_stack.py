@@ -111,15 +111,15 @@ class KibanaStack(core.Stack):
                             compress=False,
                             forwarded_values=CfnDistribution.ForwardedValuesProperty(
                                 query_string=True,
-                                cookies=CfnDistribution.CookiesProperty(forward='all'),
+                                cookies=CfnDistribution.CookiesProperty(forward="all"),
                                 headers=[
-                                    'Content-Type',
-                                    'Accept',
-                                    'Accept-Encoding',
-                                    'kbn-name',
-                                    'kbn-version'
-                                ]
-                            )
+                                    "Content-Type",
+                                    "Accept",
+                                    "Accept-Encoding",
+                                    "kbn-name",
+                                    "kbn-version",
+                                ],
+                            ),
                         )
                     ],
                 ),
