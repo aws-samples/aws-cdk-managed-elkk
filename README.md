@@ -135,9 +135,10 @@ Save the file as "resize.sh".
 
 ![Cloud 9 - Save As](/img/cloud9_idx_9.png)
 
-Execute the size script with the command:
+Execute the resize script with the command:
 
 ```bash
+# run resize script
 sh resize.sh 50
 ```
 
@@ -146,6 +147,7 @@ sh resize.sh 50
 The Cloud9 instance needs to be rebooted for the resize to be effected. Run the command below:
 
 ```bash
+# execute instance restart
 sudo reboot
 ```
 
@@ -519,7 +521,7 @@ $ /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.
 $ service logstash status -l
 ```
 
-In the Filebeat EC2 instance generate new logfiles
+In the Filebeat EC2 instance generate new log files.
 
 ```bash
 # geneate new logs

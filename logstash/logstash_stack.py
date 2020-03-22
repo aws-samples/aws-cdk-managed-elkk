@@ -53,7 +53,7 @@ class LogstashStack(core.Stack):
                     ):
                         s3_bucket_name = bkt["Name"]
             except ClientError as err:
-                if err.response["Error"]["Code"] == "NoSuchTagSet":
+                if err.response["Error"]["Code"] in ["NoSuchTagSet", "NoSuchBucket"]:
                     pass
                 else:
                     print(f"Unexpectedd error: {err}")
