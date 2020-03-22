@@ -12,6 +12,8 @@ from aws_cdk import (
 )
 import pathlib
 
+from aws_cdk.aws_cloudfront import CfnDistribution
+
 from helpers.constants import constants
 from helpers.custom_resource import CustomResource
 from helpers.functions import elastic_get_endpoint, elastic_get_domain
@@ -107,6 +109,17 @@ class KibanaStack(core.Stack):
                             allowed_methods=cloudfront.CloudFrontAllowedMethods.ALL,
                             cached_methods=cloudfront.CloudFrontAllowedCachedMethods.GET_HEAD_OPTIONS,
                             compress=False,
+                            forwarded_values=CfnDistribution.ForwardedValuesProperty(
+                                query_string=True,
+                                cookies=CfnDistribution.CookiesProperty(forward='all'),
+                                headers=[
+                                    'Content-Type',
+                                    'Accept',
+                                    'Accept-Encoding',
+                                    'kbn-name',
+                                    'kbn-version'
+                                ]
+                            )
                         )
                     ],
                 ),
@@ -120,9 +133,9 @@ class KibanaStack(core.Stack):
                         cloudfront.Behavior(
                             is_default_behavior=False,
                             path_pattern="bucket_cached/*",
-                            allowed_methods=cloudfront.CloudFrontAllowedMethods.ALL,
+                            allowed_methods=cloudfront.CloudFrontAllowedMethods.GET_HEAD,
                             cached_methods=cloudfront.CloudFrontAllowedCachedMethods.GET_HEAD_OPTIONS,
-                            compress=False,
+                            compress=True,
                         )
                     ],
                 ),
