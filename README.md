@@ -144,7 +144,9 @@ sh resize.sh 50
 
 ![Cloud 9 - Execute resize](/img/cloud9_idx_10.png)
 
-The Cloud9 instance needs to be rebooted for the resize to be effected. Run the command below:
+The Cloud9 instance needs to be restarted for the resize to be effected.
+
+Run the command below.
 
 ```bash
 # execute instance restart
@@ -179,12 +181,14 @@ $ python -m venv .env
 $ source .env/bin/activate
 ```
 
-![Terminal - Activate ENV](/img/activate_env_idx_1.png)
+![Terminal - Activate ENV](/img/create_elkk_idx_2.png)
 
 ```bash
 # download requirements
 (.env)$ python -m pip install -r requirements.txt
 ```
+
+![Terminal - Activate ENV](/img/create_elkk_idx_3.png)
 
 Create the EC2 SSH key pair allowing connections to Amazon EC2 instances.
 
@@ -203,9 +207,11 @@ In all commands update "yourkeypair" with your chosen key pair name, and "yourre
 (.env)$ ssh-add -k ~/.ssh/yourkeypair.pem 
 ```
 
+![Terminal - Key Pair](/img/create_elkk_idx_4.png)
+
 The file helpers/constants.py contains configuration for the Managed ELKK stack. This configuration can be left as default, except for the KEY_PAIR value which needs to be updated to your key pair name.
 
-Update the [/helpers/constants.py](/helpers/constants.py) file with your key pair name:
+Update the /helpers/constants.py file with your key pair name:
 
 ```python
 constants = {
@@ -220,7 +226,7 @@ constants = {
 }
 ```
 
-![Terminal - Update constants.py](/img/constants_py_idx_1.png)
+![Terminal - Update constants.py](/img/create_elkk_idx_5.png)
 
 ### Boostrap the CDK
 
@@ -230,6 +236,10 @@ Create the CDK configuration by bootstrapping the CDK.
 # bootstrap the cdk
 (.env)$ cdk bootstrap aws://youraccount/yourregion
 ```
+
+![Terminal - Bootstrap the CDK](/img/create_elkk_idx_6.png)
+
+![Terminal - Bootstrap the CDK](/img/create_elkk_idx_7.png)
 
 -----
 ## Amazon Virtual Private Cloud <a name="vpc"></a>
@@ -243,6 +253,12 @@ Use the AWS CDK to deploy an Amazon VPC across multiple availability zones.
 (.env)$ cdk deploy elkk-vpc
 ```
 
+![ELKK VPC - 1](/img/elkk_vpc_idx_1.png)
+
+![ELKK VPC - 2](/img/elkk_vpc_idx_2.png)
+
+![ELKK VPC - 3](/img/elkk_vpc_idx_3.png)
+
 -----
 ## Amazon Managed Streaming for Apache Kafka <a name="kafka"></a>
 
@@ -255,9 +271,17 @@ Use the AWS CDK to deploy an Amazon MSK Cluster into the VPC.
 (.env)$ cdk deploy elkk-kafka
 ```
 
+The CDK will prompt to apply Security Changes, input "y" for Yes.
+
+![ELKK Kafka - 1](/img/elkk_kafka_idx_1.png)
+
 When Client is set to True an Amazon EC2 instance is deployed to interact with the Amazon MSK Cluster. It can take up to 30 minutes for the Amazon MSK cluster and client EC2 instance to be deployed.
 
+![ELKK Kafka - 2](/img/elkk_kafka_idx_2.png)
+
 Wait until 2/2 checks are completed on the Kafka client EC2 instance to ensure that the userdata scripts have fully run.
+
+![ELKK Kafka - 3](/img/elkk_kafka_idx_3.png)
 
 On creation the Kafka client EC2 instance will create three Kafka topics: "elkktopic", "apachelog", and "appevent".
 
@@ -270,6 +294,8 @@ Open a terminal window to connect to the Kafka client Amazon EC2 instance and cr
 (.env)$ ssh ec2-user@$kafka_client_dns
 ```
 
+![ElKK Kafka - 4](/img/elkk_kafka_idx_4.png)
+
 While connected to the Kafka client EC2 instance create the Kafka producer session on the elkktopic Kafka topic:
 
 ```bash
@@ -281,9 +307,13 @@ $ kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --outp
 $ /opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkktopic
 ```
 
+![ElKK Kafka - 5](/img/elkk_kafka_idx_5.png)
+
 Leave the Kafka producer session window open.  
 
-Open a terminal window and connect to the Kafka client EC2 instance to create a Kafka consumer session:  
+Open a new terminal window and connect to the Kafka client EC2 instance to create a Kafka consumer session:  
+
+![ElKK Kafka - 6](/img/elkk_kafka_idx_6.png)
 
 ```bash
 # get the ec2 instance public dns
@@ -291,6 +321,10 @@ Open a terminal window and connect to the Kafka client EC2 instance to create a 
 # use the public dns to connect to the ec2 instance
 (.env)$ ssh ec2-user@$kafka_client_dns
 ```
+
+Note the optional steps in red, if the yourkeypair is not recognised.
+
+![ElKK Kafka - 7](/img/elkk_kafka_idx_7.png)
 
 While connected to the Kafka client EC2 instance create the consumer session on the elkktopic Kafka topic.
 
@@ -303,11 +337,13 @@ $ kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --outp
 $ /opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkktopic --from-beginning
 ```
 
-Leave the Kafka consumer session window open.
-
 Type messages into the Kakfa producer session and they are published to the Amazon MSK cluster
 
+![ElKK Kafka - 8](/img/elkk_kafka_idx_8.png)
+
 The messages published to the Amazon MS cluster by the producer session will appear in the Kafka consumer window as they are read from the cluster.
+
+![ElKK Kafka - 9](/img/elkk_kafka_idx_9.png)
 
 The Kafka client EC2 instance windows can be closed.
 
@@ -323,7 +359,11 @@ Use the AWS CDK to create an Amazon EC2 instance installed with Filebeat and a d
 (.env)$ cdk deploy elkk-filebeat
 ```
 
+![ElKK Filebeat - 1](/img/elkk_filebeat_idx_1.png)
+
 An Amazon EC2 instance is deployed with Filebeat installed and configured to output to Kafka.  
+
+![ElKK Filebeat - 2](/img/elkk_filebeat_idx_2.png)
 
 Wait until 2/2 checks are completed on the Filebeat EC2 instance to ensure that the userdata script as run.
 
@@ -336,12 +376,16 @@ Open a new terminal window connect to the Filebeat EC2 instance and create creat
 (.env)$ ssh ec2-user@$filebeat_dns
 ```
 
+![ElKK Filebeat - 3](/img/elkk_filebeat_idx_3.png)
+
 While connected to the Filebeat EC2 instance create dummy logs:
 
 ```bash
 # generate dummy apache logs with log generator
 $ ./log_generator.py
 ```
+
+![ElKK Filebeat - 4](/img/elkk_filebeat_idx_4.png)
 
 Dummy logs created by the log generator will be written to the apachelog folder. Filebeat will harvest the logs and publish them to the Amazon MSK cluster.
 
@@ -358,7 +402,11 @@ $ kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --outp
 $ /opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic apachelog --from-beginning
 ```
 
+![ElKK Filebeat - 5](/img/elkk_filebeat_idx_5.png)
+
 Messages generated by the log generator should appear in the Kafka consumer terminal window.
+
+![ElKK Filebeat - 6](/img/elkk_filebeat_idx_6.png)
 
 -----
 ## Amazon Elasticsearch Service <a name=elastic></a>
@@ -370,11 +418,19 @@ The Amazon Elasticsearch Service provides an Elasticsearch domain and Kibana das
 (.env)$ cdk deploy elkk-elastic
 ```
 
+When prompted input "y" for Yes to continue.
+
+![ElKK Elastic - 1](/img/elkk_elastic_idx_1.png)
+
 An Amazon EC2 instance is deployed to interact with the Amazon Elasticsearch Service domain.
 
 New Amazon Elasticsearch Service domains take about ten minutes to initialize.
 
+![ElKK Elastic - 2](/img/elkk_elastic_idx_2.png)
+
 Wait until 2/2 checks are completed on the Amazon EC2 instance to ensure that the userdata script has run.
+
+![ElKK Elastic - 3](/img/elkk_elastic_idx_3.png)
 
 Connect to the EC2 instance using a terminal window:
 
@@ -393,7 +449,7 @@ $ elastic_domain=`aws es list-domain-names --output text --query '*'` && echo $e
 # get the elastic endpoint
 $ elastic_endpoint=`aws es describe-elasticsearch-domain --domain-name $elastic_domain --output text --query 'DomainStatus.Endpoints.vpc'` && echo $elastic_endpoint
 # curl a doc into elasticsearch
-$ curl -XPOST $elastic_endpoint/elkktopic/_doc/ -d '{"director": "Burton, Tim", "genre": ["Comedy","Sci-Fi"], "year": 1996, "actor": ["Jack Nicholson","Pierce Brosnan","Sarah Jessica Parker"], "title": "Mars Attacks!"}' -H 'Content-Type: application/json'
+$ curl -XPOST $elastic_endpoint/elkktopic/_doc/ -d '{"message": "Hello - this is a test message"}' -H 'Content-Type: application/json'
 # curl to query elasticsearch
 $ curl -XPOST $elastic_endpoint/elkktopic/_search -d' { "query": { "match_all": {} } }' -H 'Content-Type: application/json'
 # count the records in the index
@@ -469,7 +525,7 @@ Amazon Simple Storage Service is used to storage logs for longer term storage. A
 -----
 ## Logstash <a name=logstash></a>
 
-Logstash is deployed to subsribe to the Kafka topics and output the data into Elasticsearch. An additional output is added to push the data into S3. Logstash additionally parses the apache common log format and transforms the log data into json format.
+Logstash is deployed to subscribe to the Kafka topics and output the data into Elasticsearch. An additional output is added to push the data into S3. Logstash additionally parses the apache common log format and transforms the log data into json format.
 
 The Logstash pipeline configuration can be viewed in [logstash/logstash.conf](/logstash/logstash.conf)
 
