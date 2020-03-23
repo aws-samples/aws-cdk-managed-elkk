@@ -441,6 +441,8 @@ Connect to the EC2 instance using a terminal window:
 (.env)$ ssh ec2-user@$elastic_dns
 ```
 
+![ElKK Elastic - 4](/img/elkk_elastic_idx_4.png)
+
 While connected to the Elastic EC2 instance:
 
 ```bash
@@ -458,6 +460,8 @@ $ curl -GET $elastic_endpoint/elkktopic/_count
 $ exit
 ```
 
+![ElKK Elastic - 5](/img/elkk_elastic_idx_5.png)
+
 -----
 ## Kibana <a name=kibana></a>
 
@@ -468,37 +472,37 @@ Amazon Elasticsearch Service has been deployed within a VPC in a private subnet.
 (.env)$ cdk deploy elkk-kibana
 ```
 
-![Select Managment](/img/kibana_stack_idx_1.png)
+![Select Managment](/img/elkk_kibana_idx_1.png)
 
 When prompted "Do you wish to deploy these changes?", enter "y" for Yes.
 
-![Select Managment](/img/kibana_stack_idx_2.png)
+![Select Managment](/img/elkk_kibana_idx_2.png)
 
 When the deployment is complete the Kibana url is output by the AWS CDK as "elkk-kibana.kibanalink. Click on the link to nativate to Kibana.
 
-![Select Managment](/img/kibana_stack_idx_3.png)
+![Select Managment](/img/elkk_kibana_idx_3.png)
 
 Open the link.
 
-![Select Managment](/img/kibana_stack_idx_4.png)
+![Select Managment](/img/elkk_kibana_idx_4.png)
 
 The Kibana Dashboard is visible.
 
-![Select Managment](/img/kibana_stack_idx_5.png)
+![Select Managment](/img/elkk_kibana_idx_5.png)
 
 To view the records on the Kibana dashboard an "index pattern" needs to be created.
 
 Select "Management" on the left of the Kibana Dashboard.
 
-![Select Managment](/img/kibana_idx_1.png)
+![Select Managment](/img/elkk_kibana_idx_6.png)
 
 Select "Index Patterns" at the top left of the Management Screen.
 
-![Select Index Patterns](/img/kibana_idx_2.png)
+![Select Index Patterns](/img/elkk_kibana_idx_7.png)
 
 Input an Index Patterns into the Index Pattern field as "elkktopc*".
 
-![Input Pattern](/img/kibana_idx_3.png)
+![Input Pattern](/img/elkk_kibana_idx_8.png)
 
 Click "Next Step".
 
@@ -506,11 +510,11 @@ Click "Create Index Pattern".
 
 The fields from the index can be seen. Click on "Discover".
 
-![Select Discover](/img/kibana_idx_4.png)
+![Select Discover](/img/elkk_kibana_idx_9.png)
 
 The data can be seen on the Discovery Dashboard.
 
-![Dashboard](/img/kibana_idx_5.png)
+![Dashboard](/img/elkk_kibana_idx_10.png)
 
 -----
 ## Amazon Athena <a name=athena></a>
@@ -521,6 +525,10 @@ Amazon Simple Storage Service is used to storage logs for longer term storage. A
 # deploy the athena stack
 (.env)$ cdk deploy elkk-athena
 ```
+
+![ELKK Athena](/img/elkk_athena_idx_1.png)
+
+![ELKK Athena](/img/elkk_athena_idx_2.png)
 
 -----
 ## Logstash <a name=logstash></a>
@@ -552,9 +560,15 @@ When we deploy the elkk-stack we will be deploying Logstash on an Amazon EC2 ins
 (.env)$ cdk deploy elkk-logstash
 ```
 
+![ELKK Logstash 1](/img/elkk_logstash_idx_1.png)
+
 An Amazon EC2 instance is deployed with Logstash installed and configured with an input from Kafka and output to Elasticsearch and s3.
 
+![ELKK Logstash 2](/img/elkk_logstash_idx_2.png)
+
 Wait until 2/2 checks are completed on the Logstash EC2 instance to ensure that the userdata scripts have fully run.  
+
+![ELKK Logstash 3](/img/elkk_logstash_idx_3.png)
 
 Connect to the Logstash EC2 instance using a terminal window:  
 
@@ -565,6 +579,8 @@ $ logstash_dns=`aws ec2 describe-instances --filter file://logstash/logstash_fil
 $ ssh ec2-user@$logstash_dns
 ```
 
+![ELKK Logstash 4](/img/elkk_logstash_idx_4.png)
+
 While connected to logstash EC2 instance:
 
 ```bash
@@ -574,6 +590,19 @@ $ /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.
 $ service logstash status -l
 ```
 
+![ELKK Logstash 5](/img/elkk_logstash_idx_5.png)
+
+Exit the Logstash instance and reconnect to the Filebeat instance.
+
+```bash
+# exit logstash instance
+exit
+# get the Filebeat ec2 instance public dns
+(.env)$ filebeat_dns=`aws ec2 describe-instances --filter file://filebeat/filebeat_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $filebeat_dns
+# use the public dns to connect to the filebeat ec2 instance
+(.env)$ ssh ec2-user@$filebeat_dns
+```
+
 In the Filebeat EC2 instance generate new log files.
 
 ```bash
@@ -581,17 +610,27 @@ In the Filebeat EC2 instance generate new log files.
 $ ./log_generator.py
 ```
 
-Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated.
+![ELKK Logstash 6](/img/elkk_logstash_idx_6.png)
 
-Create a new Index Pattern for the apache logs using pattern "elkk-apachelog*". At the Configure Settings dialog there is now an option to select a timestamp. Select "@timestamp".
+Navigate to Kibana and view the logs generated.
 
-![Dashboard](/img/kibana_idx_6.png)
+Create a new Index Pattern for the apache logs using pattern "elkk-apachelog*". 
+
+![ELKK Logstash 7](/img/elkk_logstash_idx_7.png)
+
+At the Configure Settings dialog there is now an option to select a timestamp. Select "@timestamp".
+
+![Dashboard](/img/elkk_logstash_idx_8.png)
 
 Apache Logs will now appear on a refreshed Dashboard by their timestamp. Apache Logs are selected by their index at mid-left of the Dashboard.
 
-![Dashboard](/img/kibana_idx_7.png)
+![Dashboard](/img/elkk_logstash_idx_9.png)
 
 Navigate to s3 to view the files pushed to s3.
+
+![Dashboard](/img/elkk_logstash_idx_10.png)
+
+![Dashboard](/img/elkk_logstash_idx_11.png)
 
 Logstash can be deployed into containers or virtual machines. To deploy logstash on containers update the logstash deployment from Amazon EC2 to AWS Fargate.
 
@@ -617,6 +656,8 @@ Deploy the updated stack, terminating the Logstash EC2 instance and creating a L
 ```bash
 (.env)$ cdk deploy elkk-logstash
 ```
+
+![Dashboard](/img/elkk_logstash_idx_12.png)
 
 The logstash EC2 instance will be terminated and an AWS Fargate cluster will be created. Logstash will be deployed as containerized tasks.
 
