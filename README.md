@@ -657,22 +657,30 @@ Deploy the updated stack, terminating the Logstash EC2 instance and creating a L
 (.env)$ cdk deploy elkk-logstash
 ```
 
-![Dashboard](/img/elkk_logstash_idx_12.png)
+![Logstash 12](/img/elkk_logstash_idx_12.png)
 
 The logstash EC2 instance will be terminated and an AWS Fargate cluster will be created. Logstash will be deployed as containerized tasks.
 
+![Logstash 13](/img/elkk_logstash_idx_13.png)
+
 In the Filebeat EC2 instance generate new logfiles.
+
+```bash
+# get the Filebeat ec2 instance public dns
+(.env)$ filebeat_dns=`aws ec2 describe-instances --filter file://filebeat/filebeat_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}"` && echo $filebeat_dns
+# use the public dns to connect to the filebeat ec2 instance
+(.env)$ ssh ec2-user@$filebeat_dns
 
 ```bash
 # geneate new logs, the -f 20 will generate 20 files at 30 second intervals
 $ ./log_generator.py -f 20
 ```
 
-Navigate to https://localhost:9200/_plugin/kibana/ to access Kibana and view the logs generated. They will appear in the Dashboard for Apache Logs as they are generated.
+![Logstash 14](/img/elkk_logstash_idx_14.png)
+
+Navigate to Kibana and view the logs generated. They will appear in the Dashboard for Apache Logs as they are generated.
 
 ![Dashboard](/img/kibana_idx_8.png)
-
-Navigat to s3 to view the files pushed into s3.
 
 -----
 ## Cleanup <a name=cleanup></a>
