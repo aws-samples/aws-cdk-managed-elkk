@@ -64,6 +64,20 @@ elastic_stack = ElasticStack(
 )
 elastic_stack.add_dependency(vpc_stack)
 
+# Kibana stack
+kibana_stack = KibanaStack(
+    app,
+    "elkk-kibana",
+    vpc_stack,
+    elastic_stack,
+    update_lambda_zip=False,
+    env=core.Environment(
+        account=os.environ["CDK_DEFAULT_ACCOUNT"],
+        region=os.environ["CDK_DEFAULT_REGION"],
+    ),
+)
+kibana_stack.add_dependency(elastic_stack)
+
 # Athena stack
 athena_stack = AthenaStack(
     app,
@@ -90,21 +104,6 @@ logstash_stack = LogstashStack(
 logstash_stack.add_dependency(kafka_stack)
 logstash_stack.add_dependency(elastic_stack)
 logstash_stack.add_dependency(athena_stack)
-
-
-# Kibana stack
-kibana_stack = KibanaStack(
-    app,
-    "elkk-kibana",
-    vpc_stack,
-    elastic_stack,
-    update_lambda_zip=False,
-    env=core.Environment(
-        account=os.environ["CDK_DEFAULT_ACCOUNT"],
-        region=os.environ["CDK_DEFAULT_REGION"],
-    ),
-)
-kibana_stack.add_dependency(elastic_stack)
 
 # synth the app
 app.synth()
