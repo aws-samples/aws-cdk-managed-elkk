@@ -692,3 +692,5 @@ Cloudwatch logs will need to be separately removed.
 ```bash
 (.env)$ cdk destroy elkk-vpc
 ```
+
+![Destroy](/img/destroy_idx_1.png)
