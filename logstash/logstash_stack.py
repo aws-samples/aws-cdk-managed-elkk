@@ -266,7 +266,7 @@ class LogstashStack(core.Stack):
             )
             # docker image for logstash
             logstash_image_asset = ecr_assets.DockerImageAsset(
-                self, "logstash_image_asset", directory=dirname, file="Dockerfile"
+                self, "logstash_image_asset", directory=dirname  # , file="Dockerfile"
             )
 
             # create the fargate cluster
