@@ -5,6 +5,7 @@ from aws_cdk import (
     aws_elasticsearch as aes,
     aws_iam as iam,
     aws_s3_assets as assets,
+    aws_logs as logs,
 )
 import os
 from helpers.constants import constants
@@ -32,6 +33,15 @@ class ElasticStack(core.Stack):
 
         # ensure that the service linked role exists
         ensure_service_linked_role("es.amazonaws.com")
+
+        # cloudwatch log group
+        elastic_log_group = logs.LogGroup(
+            self,
+            "elastic_log_group",
+            log_group_name="elkk/elastic/aes",
+            removal_policy=core.RemovalPolicy.DESTROY,
+            retention=logs.RetentionDays.ONE_WEEK,
+        )
 
         # security group for elastic client
         elastic_client_security_group = ec2.SecurityGroup(
@@ -110,6 +120,8 @@ class ElasticStack(core.Stack):
                 "subnetIds": vpc_stack.get_vpc_private_subnet_ids,
             },
             access_policies=elastic_document,
+            #log_publishing_options={"enabled": True},
+            #cognito_options={"enabled": True},
         )
         core.Tag.add(self.elastic_domain, "project", constants["PROJECT_TAG"])
 
