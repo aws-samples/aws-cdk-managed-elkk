@@ -1,0 +1,20 @@
+[
+    {
+        "Name": "tag:project",
+        "Values": [
+            "elkk-stack"
+        ]
+    },
+    {
+        "Name": "instance-state-name",
+        "Values": [
+            "running"
+        ]
+    },
+    {
+        "Name": "tag:aws:cloudformation:stack-name",
+        "Values": [
+            "elkk-kafka"
+        ]
+    }
+]
