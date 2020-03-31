@@ -172,7 +172,7 @@ At a bash terminal session.
 
 ```bash
 # clone the repo
-$ git clone https://github.com/fmcmac/elk-stack.git managed_elkk
+$ git clone https://github.com/aws-samples/aws-cdk-managed-elkk managed_elkk
 # move to directory
 $ cd managed_elkk
 # create the virtual environment
