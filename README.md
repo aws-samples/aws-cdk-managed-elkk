@@ -161,72 +161,29 @@ Cloud9 will restart, wait a few minutes and then refresh the page.
 
 ### Create the Managed ELKK 
 
-
 Recommence here if not using AWS Cloud9.
 
 Complete the following steps to set up the Managed ELKK workshop in your environment.
 
 At a bash terminal session.
 
-![Terminal - Clone the repo](/img/create_elkk_idx_1.png)
-
 ```bash
 # clone the repo
-$ git clone https://github.com/aws-samples/aws-cdk-managed-elkk managed_elkk
+$ git clone https://github.com/aws-samples/aws-cdk-managed-elkk
 # move to directory
-$ cd managed_elkk
-# create the virtual environment
-$ python -m venv .env
+$ cd aws-cdk-managed-elkk
+```
+
+![Create Elkk - 1](/img/create_elkk_idx_1.png)
+
+```bash
+# bootstrap the remaining setup (assumes us-east-1)
+$ bash bootstrap.sh
 # activate the virtual environment
 $ source .env/bin/activate
 ```
 
-![Terminal - Activate ENV](/img/create_elkk_idx_2.png)
-
-```bash
-# download requirements
-(.env)$ python -m pip install -r requirements.txt
-```
-
-![Terminal - Activate ENV](/img/create_elkk_idx_3.png)
-
-Create the EC2 SSH key pair allowing connections to Amazon EC2 instances.
-
-In all commands update "yourkeypair" with your chosen key pair name, and "yourregion" with your region name.
-
-```bash
-# create the key pair (note that the key-name has no .pem, output text has .pem at the end)
-(.env)$ aws ec2 create-key-pair --key-name yourkeypair --query 'KeyMaterial' --output text > yourkeypair.pem --region yourregion
-# update key_pair permissions
-(.env)$ chmod 400 yourkeypair.pem
-# move key_pair to .ssh
-(.env)$ mv yourkeypair.pem $HOME/.ssh/yourkeypair.pem
-# start the ssh agent
-(.env)$ eval `ssh-agent -s`
-# add your key to keychain
-(.env)$ ssh-add -k ~/.ssh/yourkeypair.pem 
-```
-
-![Terminal - Key Pair](/img/create_elkk_idx_4.png)
-
-The file helpers/constants.py contains configuration for the Managed ELKK stack. This configuration can be left as default, except for the KEY_PAIR value which needs to be updated to your key pair name.
-
-Update the /helpers/constants.py file with your key pair name:
-
-```python
-constants = {
-    # project level constants
-    "PROJECT_TAG": "elkk-stack",
-    # do not include the .pem in the keypair name
-    "KEY_PAIR": "yourkeypair",
-    # kafka settings
-    # etc
-    # etc
-    # etc
-}
-```
-
-![Terminal - Update constants.py](/img/create_elkk_idx_5.png)
+![Craete Elkk - 2](/img/create_elkk_idx_2.png)
 
 ### Boostrap the CDK
 
