@@ -167,20 +167,23 @@ Complete the following steps to set up the Managed ELKK workshop in your environ
 
 At a bash terminal session.
 
-![Terminal - Clone the repo](/img/create_elkk_idx_1.png)
-
 ```bash
 # clone the repo
 $ git clone https://github.com/aws-samples/aws-cdk-managed-elkk
 # move to directory
 $ cd aws-cdk-managed-elkk
+```
+
+![Create Elkk - 1](/img/create_elkk_idx_1.png)
+
+```bash
 # bootstrap the remaining setup (assumes us-east-1)
 $ bash bootstrap.sh
 # activate the virtual environment
 $ source .env/bin/activate
 ```
 
-![Terminal - Activate ENV](/img/create_elkk_idx_2.png)
+![Craete Elkk - 2](/img/create_elkk_idx_2.png)
 
 ### Boostrap the CDK
 
