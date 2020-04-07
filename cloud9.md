@@ -44,7 +44,7 @@ The Cloud9 instance will need some additional size for the Managed ELKK project.
 
 Create a new file in Cloud9:
 
-![Cloud 9 - New fileame](/img/cloud9_idx_7.png)
+![Cloud 9 - 7](/img/cloud9_idx_7.png)
 
 Paste in the below content and save the file.
 
@@ -57,7 +57,7 @@ SIZE=${1:-20}
 # Install the jq command-line JSON processor.
 sudo yum -y install jq
 
-# Get the ID of the envrionment host Amazon EC2 instance.
+# Get the ID of the environment host Amazon EC2 instance.
 INSTANCEID=$(curl http://169.254.169.254/latest/meta-data//instance-id)
 
 # Get the ID of the Amazon EBS volume associated with the instance.
@@ -78,11 +78,11 @@ sudo growpart /dev/xvda 1
 sudo resize2fs /dev/xvda1
 ```
 
-![Cloud 9 - Save fileame](/img/cloud9_idx_8.png)
+![Cloud 9 - 8](/img/cloud9_idx_8.png)
 
 Save the file as "resize.sh".
 
-![Cloud 9 - Save As](/img/cloud9_idx_9.png)
+![Cloud 9 - 9](/img/cloud9_idx_9.png)
 
 Execute the resize script with the command:
 
