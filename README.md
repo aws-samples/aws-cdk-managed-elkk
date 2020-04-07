@@ -1,6 +1,6 @@
 # Amazon Managed ELKK
  
-This repository contains an implimentation example of a managed ELKK stack using the AWS Cloud Development Kit. This example uses Python.
+This repository contains an implementation example of a managed ELKK stack using the AWS Cloud Development Kit. This example uses Python.
 
 ## Table of Contents
 1. [Context](#context)
@@ -16,7 +16,7 @@ This repository contains an implimentation example of a managed ELKK stack using
 
 ## Context <a name="context"></a>
 
-The ELKK stack is a pipeline of services to support real-time reporting and analytics. Amazon services can provide a managed ELKK stack using the services Amazon Elasticsearch Service, Logstash on Amazon EC2 or on Amazon Elastic Container Services and Amazon Managed Streaming for Kafka. Kibana is included as a capability of the Amazon Elasticsearch Service. As part of a hoslistic solution Logstash in addition to outputing logs to Amazon Elasticsearch outputs the log to Amazon S3 for longer term storage. Amazon Athena can be used to directly query files in Amazon S3.
+The ELKK stack is a pipeline of services to support real-time reporting and analytics. Amazon services can provide a managed ELKK stack using the services Amazon Elasticsearch Service, Logstash on Amazon EC2 or on Amazon Elastic Container Services and Amazon Managed Streaming for Kafka. Kibana is included as a capability of the Amazon Elasticsearch Service. As part of a holistic solution Logstash in addition to outputting logs to Amazon Elasticsearch outputs the log to Amazon S3 for longer term storage. Amazon Athena can be used to directly query files in Amazon S3.
 
 ### Components
 
@@ -47,121 +47,9 @@ Git -  https://git-scm.com/downloads
 python (3.6 or later) - https://www.python.org/downloads/  
 Docker - https://www.docker.com/  
 
-If not using AWS Cloud9 skip to section "Create the Managed ELKK".
-
-### AWS Cloud9 - Create Cloud9 Environment
-
-AWS Cloud9 is a cloud-based integrated development environment (IDE) that lets you write, run, and debug your code with just a browser. All of the prerequisites for the Managed ELKK are installed in a Cloud9 Environment.
-
-Open the Cloud9 console: https://console.aws.amazon.com/cloud9
-
-On the Cloud9 home page:
-
-* Click: "Create Environment"
-
-![Cloud 9 - Create Environment](/img/cloud9_idx_1.png)
-
-On the "Name environment" screen:
-
-* Input "Name" = "elkk-workshop".
-* Click "Next Step".
-
-![Cloud 9 - Name Environment](/img/cloud9_idx_2.png)
-
-On the "Configure settings" screen:
-
-* Select "Environment type" = "Create a new instance for environment (EC2)"
-* Select "Instance Type" = "t3.small (2 GiB RAM + 2 vCPU)"
-* Select "Platform" = "Amazon Linux"
-
-![Cloud 9 - Name Environment](/img/cloud9_idx_3.png)
-
-* Click "Next Step"
-
-![Cloud 9 - Name Environment](/img/cloud9_idx_4.png)
-
-On the "Review" screen:
-
-* Review the settings
-* Click "Create Environment"
-
-![Cloud 9 - Name Environment](/img/cloud9_idx_5.png)
-
-Cloud9 will report: "We are creating your AWS Cloud9 environment. This can take a few minutes."
-
-![Cloud 9 - Name Environment](/img/cloud9_idx_6.png)
-
-The Cloud9 instance will need some additional size for the Managed ELKK project. To increase the Amazon EBS volume to 50GB complete the following steps (additional details can be found at: https://docs.aws.amazon.com/cloud9/latest/user-guide/move-environment.html).
-
-Create a new file in Cloud9:
-
-![Cloud 9 - New fileame](/img/cloud9_idx_7.png)
-
-Paste in the below content and save the file.
-
-```sh
-#!/bin/bash
-
-# Specify the desired volume size in GiB as a command-line argument. If not specified, default to 20 GiB.
-SIZE=${1:-20}
-
-# Install the jq command-line JSON processor.
-sudo yum -y install jq
-
-# Get the ID of the envrionment host Amazon EC2 instance.
-INSTANCEID=$(curl http://169.254.169.254/latest/meta-data//instance-id)
-
-# Get the ID of the Amazon EBS volume associated with the instance.
-VOLUMEID=$(aws ec2 describe-instances --instance-id $INSTANCEID | jq -r .Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
-
-# Resize the EBS volume.
-aws ec2 modify-volume --volume-id $VOLUMEID --size $SIZE
-
-# Wait for the resize to finish.
-while [ "$(aws ec2 describe-volumes-modifications --volume-id $VOLUMEID --filters Name=modification-state,Values="optimizing","completed" | jq '.VolumesModifications | length')" != "1" ]; do
-  sleep 1
-done
-
-# Rewrite the partition table so that the partition takes up all the space that it can.
-sudo growpart /dev/xvda 1
-
-# Expand the size of the file system.
-sudo resize2fs /dev/xvda1
-```
-
-![Cloud 9 - Save fileame](/img/cloud9_idx_8.png)
-
-Save the file as "resize.sh".
-
-![Cloud 9 - Save As](/img/cloud9_idx_9.png)
-
-Execute the resize script with the command:
-
-```bash
-# run resize script
-sh resize.sh 50
-```
-
-![Cloud 9 - Execute resize](/img/cloud9_idx_10.png)
-
-The Cloud9 instance needs to be restarted for the resize to be effected.
-
-Run the command below.
-
-```bash
-# execute instance restart
-sudo reboot
-```
-
-![Cloud 9 - Reboot](/img/cloud9_idx_11.png)
-
-Cloud9 will restart, wait a few minutes and then refresh the page.
-
-![Cloud 9 - Wait](/img/cloud9_idx_12.png)
+If desired AWS Cloud9 set up is detailed in the [AWS Cloud9 setup Instructions](cloud9.md).
 
 ### Create the Managed ELKK 
-
-Recommence here if not using AWS Cloud9.
 
 Complete the following steps to set up the Managed ELKK workshop in your environment.
 
@@ -183,9 +71,9 @@ $ bash bootstrap.sh
 $ source .env/bin/activate
 ```
 
-![Craete Elkk - 2](/img/create_elkk_idx_2.png)
+![Create Elkk - 2](/img/create_elkk_idx_2.png)
 
-### Boostrap the CDK
+### Bootstrap the CDK
 
 Create the CDK configuration by bootstrapping the CDK.
 
@@ -213,8 +101,6 @@ Use the AWS CDK to deploy an Amazon VPC across multiple availability zones.
 ![ELKK VPC - 1](/img/elkk_vpc_idx_1.png)
 
 ![ELKK VPC - 2](/img/elkk_vpc_idx_2.png)
-
-![ELKK VPC - 3](/img/elkk_vpc_idx_3.png)
 
 -----
 ## Amazon Managed Streaming for Apache Kafka <a name="kafka"></a>
@@ -260,7 +146,7 @@ While connected to the Kafka client EC2 instance create the Kafka producer sessi
 $ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
 # Get the bootstrap brokers
 $ kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
-# Connect to the cluster as a producer on the Kakfa topic "elkktopic" 
+# Connect to the cluster as a producer on the Kafka topic "elkktopic" 
 $ /opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkktopic
 ```
 
@@ -279,7 +165,7 @@ Open a new terminal window and connect to the Kafka client EC2 instance to creat
 (.env)$ ssh ec2-user@$kafka_client_dns
 ```
 
-Note the optional steps in red, if the yourkeypair is not recognised.
+Note the optional steps in red, if the yourkeypair is not recognized.
 
 ![ElKK Kafka - 7](/img/elkk_kafka_idx_7.png)
 
@@ -294,7 +180,7 @@ $ kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --outp
 $ /opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkktopic --from-beginning
 ```
 
-Type messages into the Kakfa producer session and they are published to the Amazon MSK cluster
+Type messages into the Kafka producer session and they are published to the Amazon MSK cluster
 
 ![ElKK Kafka - 8](/img/elkk_kafka_idx_8.png)
 
@@ -368,7 +254,7 @@ Messages generated by the log generator should appear in the Kafka consumer term
 -----
 ## Amazon Elasticsearch Service <a name=elastic></a>
 
-The Amazon Elasticsearch Service provides an Elasticsearch domain and Kibana dashboards. The elkk-elastic stack also creats an Amazon EC2 instance to interact with the Elasticsearch domain. The EC2 instance can also be used to create an SSH tunnel into the VPC for Kibana dashboard viewing.
+The Amazon Elasticsearch Service provides an Elasticsearch domain and Kibana dashboards. The elkk-elastic stack also creates an Amazon EC2 instance to interact with the Elasticsearch domain. The EC2 instance can also be used to create an SSH tunnel into the VPC for Kibana dashboard viewing.
 
 ```bash
 # deploy the elastic stack
@@ -422,36 +308,36 @@ $ exit
 -----
 ## Kibana <a name=kibana></a>
 
-Amazon Elasticsearch Service has been deployed within a VPC in a private subnet. To allow connections to the Kibana dashboard we deploy a public endpoint using Amazon API Gateway, AWS Lambda, Amazon Cloudfront, and Amazon S3.
+Amazon Elasticsearch Service has been deployed within a VPC in a private subnet. To allow connections to the Kibana dashboard we deploy a public endpoint using Amazon API Gateway, AWS Lambda, Amazon CloudFront, and Amazon S3.
 
 ```bash
 # deploy the kibana endpoint
 (.env)$ cdk deploy elkk-kibana
 ```
 
-![Select Managment](/img/elkk_kibana_idx_1.png)
+![Kibana - 1](/img/elkk_kibana_idx_1.png)
 
 When prompted "Do you wish to deploy these changes?", enter "y" for Yes.
 
-![Select Managment](/img/elkk_kibana_idx_2.png)
+![Kibana - 2](/img/elkk_kibana_idx_2.png)
 
-When the deployment is complete the Kibana url is output by the AWS CDK as "elkk-kibana.kibanalink. Click on the link to nativate to Kibana.
+When the deployment is complete the Kibana url is output by the AWS CDK as "elkk-kibana.kibanalink. Click on the link to navigate to Kibana.
 
-![Select Managment](/img/elkk_kibana_idx_3.png)
+![Kibana - 3](/img/elkk_kibana_idx_3.png)
 
 Open the link.
 
-![Select Managment](/img/elkk_kibana_idx_4.png)
+![Kibana - 4](/img/elkk_kibana_idx_4.png)
 
 The Kibana Dashboard is visible.
 
-![Select Managment](/img/elkk_kibana_idx_5.png)
+![Kibana - 5](/img/elkk_kibana_idx_5.png)
 
 To view the records on the Kibana dashboard an "index pattern" needs to be created.
 
 Select "Management" on the left of the Kibana Dashboard.
 
-![Select Managment](/img/elkk_kibana_idx_6.png)
+![Kibana - 6](/img/elkk_kibana_idx_6.png)
 
 Select "Index Patterns" at the top left of the Management Screen.
 
@@ -494,7 +380,7 @@ Logstash is deployed to subscribe to the Kafka topics and output the data into E
 
 The Logstash pipeline configuration can be viewed in [logstash/logstash.conf](/logstash/logstash.conf)
 
-Check the [/app.py](/app.py) file and verify that the elkk-logstash stack is initially set to deploy Logstash on an Amazon EC2 instance and Amazon Fargate deployent is disabled.
+Check the [/app.py](/app.py) file and verify that the elkk-logstash stack is initially set to deploy Logstash on an Amazon EC2 instance and Amazon Fargate deployment is disabled.
 
 ```python
 # logstash stack
@@ -563,7 +449,7 @@ exit
 In the Filebeat EC2 instance generate new log files.
 
 ```bash
-# geneate new logs
+# generate new logs
 $ ./log_generator.py
 ```
 
@@ -629,7 +515,7 @@ In the Filebeat EC2 instance generate new logfiles.
 (.env)$ ssh ec2-user@$filebeat_dns
 
 ```bash
-# geneate new logs, the -f 20 will generate 20 files at 30 second intervals
+# generate new logs, the -f 20 will generate 20 files at 30 second intervals
 $ ./log_generator.py -f 20
 ```
 
@@ -642,9 +528,9 @@ Navigate to Kibana and view the logs generated. They will appear in the Dashboar
 -----
 ## Cleanup <a name=cleanup></a>
 
-To clean up the stacks... destroy the elkk-vpc stack, all other stacks will be torn down due to dependancies. 
+To clean up the stacks... destroy the elkk-vpc stack, all other stacks will be torn down due to dependencies. 
 
-Cloudwatch logs will need to be separately removed.
+CloudWatch logs will need to be separately removed.
 
 ```bash
 (.env)$ cdk destroy elkk-vpc
