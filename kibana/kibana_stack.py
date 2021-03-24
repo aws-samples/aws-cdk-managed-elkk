@@ -1,5 +1,4 @@
 # import modules
-import os
 from subprocess import call
 from aws_cdk import (
     core,
@@ -10,15 +9,16 @@ from aws_cdk import (
     aws_iam as iam,
     aws_logs as logs,
 )
-import pathlib
+
+# set path
+from pathlib import Path
+
+dirname = Path(__file__).parent
 
 from aws_cdk.aws_cloudfront import CfnDistribution
 
-from helpers.constants import constants
 from helpers.custom_resource import CustomResource
 from helpers.functions import elastic_get_endpoint, elastic_get_domain
-
-dirname = os.path.dirname(__file__)
 
 
 class KibanaStack(core.Stack):
@@ -28,6 +28,7 @@ class KibanaStack(core.Stack):
         id_: str,
         vpc_stack,
         elastic_stack,
+        constants: dict,
         update_lambda_zip=False,
         **kwargs,
     ) -> None:
@@ -36,7 +37,8 @@ class KibanaStack(core.Stack):
         # if update lambda zip (including if zip doesn't exist)
         if (
             update_lambda_zip
-            or not pathlib.Path(os.path.join(dirname, "kibana_lambda.zip")).exists()
+            or not dirname.joinpath("kibana_lambda.zip").exists()
+            
         ):
             # rebuild the lambda if changed
             call(["docker", "build", "--tag", "kibana-lambda", "."], cwd=dirname)
@@ -62,7 +64,7 @@ class KibanaStack(core.Stack):
             self,
             "kibana_lambda",
             description="kibana api gateway lambda",
-            code=lambda_.Code.from_asset(os.path.join(dirname, "kibana_lambda.zip")),
+            code=lambda_.Code.from_asset(str(dirname.joinpath("kibana_lambda.zip"))),
             handler="lambda_function.lambda_handler",
             timeout=core.Duration.seconds(300),
             runtime=lambda_.Runtime.PYTHON_3_8,
@@ -74,7 +76,11 @@ class KibanaStack(core.Stack):
         core.Tag.add(kibana_lambda, "project", constants["PROJECT_TAG"])
         # create policies for the lambda
         kibana_lambda_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW, actions=["s3:*",], resources=["*"],
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "s3:*",
+            ],
+            resources=["*"],
         )
         # add the role permissions
         kibana_lambda.add_to_role_policy(statement=kibana_lambda_policy)
@@ -149,11 +155,15 @@ class KibanaStack(core.Stack):
         # kibana bucket empty policies
         kibana_bucket_empty_policy = [
             iam.PolicyStatement(
-                effect=iam.Effect.ALLOW, actions=["s3:ListBucket"], resources=["*"],
+                effect=iam.Effect.ALLOW,
+                actions=["s3:ListBucket"],
+                resources=["*"],
             ),
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=["s3:DeleteObject",],
+                actions=[
+                    "s3:DeleteObject",
+                ],
                 resources=[f"{kibana_bucket.bucket_arn}/*"],
             ),
         ]
@@ -164,7 +174,7 @@ class KibanaStack(core.Stack):
             PhysicalId="kibanaBucketEmpty",
             Description="Empty kibana cache s3 bucket",
             Uuid="f7d4f730-4ee1-13e8-9c2d-fa7ae06bbebc",
-            HandlerPath=os.path.join(dirname, "../helpers/s3_bucket_empty.py"),
+            HandlerPath=str(dirname.parent.joinpath("helpers/s3_bucket_empty.py")),
             BucketName=kibana_bucket.bucket_name,
             ResourcePolicies=kibana_bucket_empty_policy,
         )
@@ -197,7 +207,7 @@ class KibanaStack(core.Stack):
             Description="Update ENV vars for kibana api lambda",
             PhysicalId="kibanaLambdaUpdate",
             Uuid="f7d4f230-4ee1-07e8-9c2d-fa7ae06bbebc",
-            HandlerPath=os.path.join(dirname, "../helpers/lambda_env_update.py"),
+            HandlerPath=str(dirname.parent.joinpath("helpers/lambda_env_update.py")),
             ResourcePolicies=kibana_lambda_update_policy,
         )
         # tag the lamdbda
@@ -213,4 +223,3 @@ class KibanaStack(core.Stack):
             description="Kibana Web Url",
             export_name="kibana-link",
         )
-

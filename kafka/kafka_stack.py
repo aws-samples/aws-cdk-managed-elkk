@@ -1,5 +1,4 @@
 # import modules
-import os
 import io
 
 import boto3
@@ -16,7 +15,6 @@ from aws_cdk import (
 kafka = boto3.client("kafka")
 
 # get constants
-from helpers.constants import constants
 from helpers.functions import (
     file_updated,
     kafka_get_brokers,
@@ -26,13 +24,23 @@ from helpers.functions import (
     instance_add_log_permissions,
 )
 
-dirname = os.path.dirname(__file__)
+# set path
+from pathlib import Path
+
+dirname = Path(__file__).parent
+
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 
 class KafkaStack(core.Stack):
     def __init__(
-        self, scope: core.Construct, id: str, vpc_stack, client: bool = True, **kwargs
+        self,
+        scope: core.Construct,
+        id: str,
+        vpc_stack,
+        constants: dict,
+        client: bool = True,
+        **kwargs,
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
@@ -41,7 +49,7 @@ class KafkaStack(core.Stack):
 
         # create assets
         client_properties = assets.Asset(
-            self, "client_properties", path=os.path.join(dirname, "client.properties")
+            self, "client_properties", path=str(dirname.joinpath("client.properties"))
         )
 
         # security group for kafka clients
@@ -59,7 +67,9 @@ class KafkaStack(core.Stack):
 
         # Open port 22 for SSH
         self.kafka_client_security_group.add_ingress_rule(
-            ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(22), "from own public ip",
+            ec2.Peer.ipv4(f"{external_ip}/32"),
+            ec2.Port.tcp(22),
+            "from own public ip",
         )
 
         # security group for kafka
@@ -75,7 +85,9 @@ class KafkaStack(core.Stack):
 
         # add ingress for kafka security group
         self.kafka_security_group.connections.allow_from(
-            self.kafka_security_group, ec2.Port.all_traffic(), "within kafka",
+            self.kafka_security_group,
+            ec2.Port.all_traffic(),
+            "within kafka",
         )
         self.kafka_security_group.connections.allow_from(
             self.kafka_client_security_group,
@@ -85,7 +97,9 @@ class KafkaStack(core.Stack):
 
         # ingress for kc sg
         self.kafka_client_security_group.connections.allow_from(
-            self.kafka_security_group, ec2.Port.all_traffic(), "from kafka",
+            self.kafka_security_group,
+            ec2.Port.all_traffic(),
+            "from kafka",
         )
 
         # create the kafka cluster
@@ -177,9 +191,9 @@ class KafkaStack(core.Stack):
             # attach the userdata
             kafka_client_instance.add_user_data(kafka_client_userdata.render())
             # add creation policy for instance (disabled as appears to be firing in error)
-            #kafka_client_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
+            # kafka_client_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
             #    resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
-            #)
+            # )
 
     # properties
     @property

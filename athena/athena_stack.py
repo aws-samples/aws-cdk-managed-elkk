@@ -1,15 +1,17 @@
 # import modules
 from aws_cdk import core, aws_s3 as s3, aws_iam as iam, aws_glue as glue
 from helpers.custom_resource import CustomResource
-from helpers.constants import constants
 import os
 
 # set path
-dirname = os.path.dirname(__file__)
+from pathlib import Path
 
+dirname = Path(__file__).parent
 
 class AthenaStack(core.Stack):
-    def __init__(self, scope: core.Construct, id: str, **kwargs) -> None:
+    def __init__(
+        self, scope: core.Construct, id: str, constants: dict, **kwargs
+    ) -> None:
         super().__init__(scope, id, **kwargs)
 
         # create s3 bucket for athena data
@@ -39,11 +41,15 @@ class AthenaStack(core.Stack):
         # lambda policies
         athena_bucket_empty_policy = [
             iam.PolicyStatement(
-                effect=iam.Effect.ALLOW, actions=["s3:ListBucket"], resources=["*"],
+                effect=iam.Effect.ALLOW,
+                actions=["s3:ListBucket"],
+                resources=["*"],
             ),
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=["s3:DeleteObject",],
+                actions=[
+                    "s3:DeleteObject",
+                ],
                 resources=[f"{self.s3_bucket.bucket_arn}/*"],
             ),
         ]
@@ -55,7 +61,7 @@ class AthenaStack(core.Stack):
             PhysicalId="athenaBucketEmpty",
             Description="Empty athena s3 bucket",
             Uuid="f7d4f730-4ee1-11e8-9c2d-fa7ae01bbebc",
-            HandlerPath=os.path.join(dirname, "../helpers/s3_bucket_empty.py"),
+            HandlerPath=str(dirname.parent.joinpath("helpers/s3_bucket_empty.py")),
             BucketName=self.s3_bucket.bucket_name,
             ResourcePolicies=athena_bucket_empty_policy,
         )

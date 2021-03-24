@@ -10,7 +10,6 @@ from aws_cdk import (
     aws_ecr_assets as ecr_assets,
     aws_logs as logs,
 )
-from helpers.constants import constants
 from helpers.functions import (
     file_updated,
     kafka_get_brokers,
@@ -23,7 +22,11 @@ from botocore.exceptions import ClientError
 
 logs_client = boto3.client("logs")
 
-dirname = os.path.dirname(__file__)
+# set path
+from pathlib import Path
+
+dirname = Path(__file__).parent
+
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 
@@ -33,6 +36,7 @@ class LogstashStack(core.Stack):
         scope: core.Construct,
         id: str,
         vpc_stack,
+        constants: dict,
         logstash_ec2=True,
         logstash_fargate=True,
         **kwargs,
@@ -74,16 +78,16 @@ class LogstashStack(core.Stack):
 
         # assets for logstash stack
         logstash_yml = assets.Asset(
-            self, "logstash_yml", path=os.path.join(dirname, "logstash.yml")
+            self, "logstash_yml", path=str(dirname.joinpath("logstash.yml"))
         )
         logstash_repo = assets.Asset(
-            self, "logstash_repo", path=os.path.join(dirname, "logstash.repo")
+            self, "logstash_repo", path=str(dirname.joinpath("logstash.repo"))
         )
 
         # update conf file to .asset
         # kafka brokerstring does not need reformatting
         logstash_conf_asset = file_updated(
-            os.path.join(dirname, "logstash.conf"),
+            str(dirname.joinpath("logstash.conf")),
             {
                 "$s3_bucket": s3_bucket_name,
                 "$es_endpoint": es_endpoint,
@@ -91,7 +95,11 @@ class LogstashStack(core.Stack):
                 "$elkk_region": os.environ["CDK_DEFAULT_REGION"],
             },
         )
-        logstash_conf = assets.Asset(self, "logstash.conf", path=logstash_conf_asset,)
+        logstash_conf = assets.Asset(
+            self,
+            "logstash.conf",
+            path=logstash_conf_asset,
+        )
 
         # logstash security group
         logstash_security_group = ec2.SecurityGroup(
@@ -106,13 +114,22 @@ class LogstashStack(core.Stack):
 
         # Open port 22 for SSH
         logstash_security_group.add_ingress_rule(
-            ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(22), "from own public ip",
+            ec2.Peer.ipv4(f"{external_ip}/32"),
+            ec2.Port.tcp(22),
+            "from own public ip",
         )
 
         # get security group for kafka
         ec2client = boto3.client("ec2")
         security_groups = ec2client.describe_security_groups(
-            Filters=[{"Name": "tag-value", "Values": [constants["PROJECT_TAG"],]},],
+            Filters=[
+                {
+                    "Name": "tag-value",
+                    "Values": [
+                        constants["PROJECT_TAG"],
+                    ],
+                },
+            ],
         )
 
         # if kafka sg does not exist ... don't add it
@@ -128,7 +145,9 @@ class LogstashStack(core.Stack):
 
             # let in logstash
             kafka_security_group.connections.allow_from(
-                logstash_security_group, ec2.Port.all_traffic(), "from logstash",
+                logstash_security_group,
+                ec2.Port.all_traffic(),
+                "from logstash",
             )
         except IndexError:
             # print("kafka_sg_id and kafka_security_group not found")
@@ -147,7 +166,9 @@ class LogstashStack(core.Stack):
 
             # let in logstash
             elastic_security_group.connections.allow_from(
-                logstash_security_group, ec2.Port.all_traffic(), "from logstash",
+                logstash_security_group,
+                ec2.Port.all_traffic(),
+                "from logstash",
             )
         except IndexError:
             pass
@@ -166,7 +187,10 @@ class LogstashStack(core.Stack):
         # kafka policy
         access_kafka_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["kafka:ListClusters", "kafka:GetBootstrapBrokers",],
+            actions=[
+                "kafka:ListClusters",
+                "kafka:GetBootstrapBrokers",
+            ],
             resources=["*"],
         )
 
@@ -250,8 +274,10 @@ class LogstashStack(core.Stack):
             logstash_userdata.add_signal_on_exit_command(resource=logstash_instance)
 
             # add creation policy for instance
-            logstash_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
-                resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+            logstash_instance.instance.cfn_options.creation_policy = (
+                core.CfnCreationPolicy(
+                    resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+                )
             )
 
         # fargate for logstash
@@ -266,7 +292,7 @@ class LogstashStack(core.Stack):
             )
             # docker image for logstash
             logstash_image_asset = ecr_assets.DockerImageAsset(
-                self, "logstash_image_asset", directory=dirname  # , file="Dockerfile"
+                self, "logstash_image_asset", directory=str(dirname)  # , file="Dockerfile"
             )
 
             # create the fargate cluster
@@ -277,7 +303,10 @@ class LogstashStack(core.Stack):
 
             # the task
             logstash_task = ecs.FargateTaskDefinition(
-                self, "logstash_task", cpu=512, memory_limit_mib=1024,
+                self,
+                "logstash_task",
+                cpu=512,
+                memory_limit_mib=1024,
             )
 
             # add container to the task

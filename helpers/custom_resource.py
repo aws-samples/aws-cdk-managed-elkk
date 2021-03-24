@@ -1,4 +1,3 @@
-import os
 from aws_cdk import (
     aws_cloudformation as cfn,
     aws_lambda as lambda_,

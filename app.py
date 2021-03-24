@@ -15,26 +15,24 @@ from kibana.kibana_stack import KibanaStack
 
 app = core.App()
 
-# Vpc stack
-vpc_stack = VpcStack(
-    app,
-    "elkk-vpc",
-    env=core.Environment(
-        account=os.environ["CDK_DEFAULT_ACCOUNT"],
-        region=os.environ["CDK_DEFAULT_REGION"],
-    ),
+this_env = core.Environment(
+    account=os.environ["CDK_DEFAULT_ACCOUNT"],
+    region=os.environ["CDK_DEFAULT_REGION"],
 )
+
+constants = app.node.try_get_context("constants")
+
+# Vpc stack
+vpc_stack = VpcStack(app, "elkk-vpc", constants=constants, env=this_env)
 
 # Kafka stack
 kafka_stack = KafkaStack(
     app,
     "elkk-kafka",
     vpc_stack,
+    constants=constants,
     client=True,
-    env=core.Environment(
-        account=os.environ["CDK_DEFAULT_ACCOUNT"],
-        region=os.environ["CDK_DEFAULT_REGION"],
-    ),
+    env=this_env,
 )
 kafka_stack.add_dependency(vpc_stack)
 
@@ -44,10 +42,8 @@ filebeat_stack = FilebeatStack(
     "elkk-filebeat",
     vpc_stack,
     kafka_stack,
-    env=core.Environment(
-        account=os.environ["CDK_DEFAULT_ACCOUNT"],
-        region=os.environ["CDK_DEFAULT_REGION"],
-    ),
+    constants=constants,
+    env=this_env,
 )
 filebeat_stack.add_dependency(kafka_stack)
 
@@ -56,11 +52,9 @@ elastic_stack = ElasticStack(
     app,
     "elkk-elastic",
     vpc_stack,
+    constants=constants,
     client=True,
-    env=core.Environment(
-        account=os.environ["CDK_DEFAULT_ACCOUNT"],
-        region=os.environ["CDK_DEFAULT_REGION"],
-    ),
+    env=this_env,
 )
 elastic_stack.add_dependency(vpc_stack)
 
@@ -70,11 +64,9 @@ kibana_stack = KibanaStack(
     "elkk-kibana",
     vpc_stack,
     elastic_stack,
+    constants=constants,
     update_lambda_zip=False,
-    env=core.Environment(
-        account=os.environ["CDK_DEFAULT_ACCOUNT"],
-        region=os.environ["CDK_DEFAULT_REGION"],
-    ),
+    env=this_env,
 )
 kibana_stack.add_dependency(elastic_stack)
 
@@ -82,10 +74,8 @@ kibana_stack.add_dependency(elastic_stack)
 athena_stack = AthenaStack(
     app,
     "elkk-athena",
-    env=core.Environment(
-        account=os.environ["CDK_DEFAULT_ACCOUNT"],
-        region=os.environ["CDK_DEFAULT_REGION"],
-    ),
+    constants=constants,
+    env=this_env,
 )
 athena_stack.add_dependency(vpc_stack)
 
@@ -94,12 +84,10 @@ logstash_stack = LogstashStack(
     app,
     "elkk-logstash",
     vpc_stack,
+    constants=constants,
     logstash_ec2=False,
     logstash_fargate=True,
-    env=core.Environment(
-        account=os.environ["CDK_DEFAULT_ACCOUNT"],
-        region=os.environ["CDK_DEFAULT_REGION"],
-    ),
+    env=this_env,
 )
 logstash_stack.add_dependency(kafka_stack)
 logstash_stack.add_dependency(elastic_stack)

@@ -1,5 +1,4 @@
 # import modules
-import os.path
 import urllib.request
 
 from aws_cdk import (
@@ -14,27 +13,38 @@ from helpers.functions import (
     user_data_init,
     instance_add_log_permissions,
 )
-from helpers.constants import constants
 
-dirname = os.path.dirname(__file__)
+# set path
+from pathlib import Path
+
+dirname = Path(__file__).parent
+
 external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 
 class FilebeatStack(core.Stack):
     def __init__(
-        self, scope: core.Construct, id: str, vpc_stack, kafka_stack, **kwargs
+        self,
+        scope: core.Construct,
+        id: str,
+        vpc_stack,
+        kafka_stack,
+        constants: dict,
+        **kwargs,
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
         # log generator asset
         log_generator_py = assets.Asset(
-            self, "log_generator", path=os.path.join(dirname, "log_generator.py")
+            self,
+            "log_generator",
+            path=str(dirname.joinpath("log_generator.py")),
         )
         # log generator requirements.txt asset
         log_generator_requirements_txt = assets.Asset(
             self,
             "log_generator_requirements_txt",
-            path=os.path.join(dirname, "log_generator_requirements.txt"),
+            path=str(dirname.joinpath("log_generator_requirements.txt")),
         )
 
         # get kakfa brokers
@@ -42,11 +52,12 @@ class FilebeatStack(core.Stack):
 
         # update filebeat.yml to .asset
         filebeat_yml_asset = file_updated(
-            os.path.join(dirname, "filebeat.yml"), {"$kafka_brokers": kafka_brokers},
+            str(dirname.joinpath("filebeat.yml")),
+            {"$kafka_brokers": kafka_brokers},
         )
         filebeat_yml = assets.Asset(self, "filebeat_yml", path=filebeat_yml_asset)
         elastic_repo = assets.Asset(
-            self, "elastic_repo", path=os.path.join(dirname, "elastic.repo")
+            self, "elastic_repo", path=str(dirname.joinpath("elastic.repo"))
         )
         # userdata for Filebeat
         fb_userdata = user_data_init(log_group_name="elkk/filebeat/instance")
@@ -69,7 +80,10 @@ class FilebeatStack(core.Stack):
         # create policies for EC2 to connect to kafka
         access_kafka_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["kafka:ListClusters", "kafka:GetBootstrapBrokers",],
+            actions=[
+                "kafka:ListClusters",
+                "kafka:GetBootstrapBrokers",
+            ],
             resources=["*"],
         )
         # add the role permissions

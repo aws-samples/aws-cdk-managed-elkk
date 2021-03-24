@@ -1,3 +1,23 @@
 {
-  "app": "python3 app.py"
+  "app": "python app.py",
+  "context": {
+    "constants": {
+      "PROJECT_TAG": "elkk-stack",
+      "KEY_PAIR": "elk-key-pair",
+      "KAFKA_DOWNLOAD_VERSION": "kafka_2.12-2.4.0",
+      "KAFKA_BROKER_NODES": 3,
+      "KAFKA_VERSION": "2.3.1",
+      "KAFKA_INSTANCE_TYPE": "kafka.m5.large",
+      "KAFKA_CLIENT_INSTANCE": "t2.xlarge",
+      "FILEBEAT_INSTANCE": "t2.xlarge",
+      "ELASTIC_CLIENT_INSTANCE": "t2.xlarge",
+      "ELASTIC_DEDICATED_MASTER": false,
+      "ELASTIC_MASTER_COUNT": 3,
+      "ELASTIC_MASTER_INSTANCE": "r5.large.elasticsearch",
+      "ELASTIC_INSTANCE_COUNT": 3,
+      "ELASTIC_INSTANCE": "r5.large.elasticsearch",
+      "ELASTIC_VERSION": "7.1",
+      "LOGSTASH_INSTANCE": "t2.xlarge"
+    }
+  }
 }

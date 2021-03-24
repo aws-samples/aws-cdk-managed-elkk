@@ -2,7 +2,6 @@
 import os
 import boto3
 from botocore.exceptions import ClientError
-from helpers.constants import constants
 from pathlib import Path
 import hashlib
 from aws_cdk import (

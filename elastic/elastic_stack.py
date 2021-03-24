@@ -7,8 +7,6 @@ from aws_cdk import (
     aws_s3_assets as assets,
     aws_logs as logs,
 )
-import os
-from helpers.constants import constants
 from helpers.functions import (
     ensure_service_linked_role,
     user_data_init,
@@ -25,7 +23,7 @@ class ElasticStack(core.Stack):
         scope: core.Construct,
         id: str,
         vpc_stack,
-        # kafka_stack,
+        constants: dict,
         client: bool = True,
         **kwargs,
     ) -> None:
@@ -55,11 +53,15 @@ class ElasticStack(core.Stack):
         core.Tag.add(elastic_client_security_group, "Name", "elastic_client_sg")
         # Open port 22 for SSH
         elastic_client_security_group.add_ingress_rule(
-            ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(22), "from own public ip",
+            ec2.Peer.ipv4(f"{external_ip}/32"),
+            ec2.Port.tcp(22),
+            "from own public ip",
         )
         # Open port for tunnel
         elastic_client_security_group.add_ingress_rule(
-            ec2.Peer.ipv4(f"{external_ip}/32"), ec2.Port.tcp(9200), "for ssh tunnel",
+            ec2.Peer.ipv4(f"{external_ip}/32"),
+            ec2.Port.tcp(9200),
+            "for ssh tunnel",
         )
 
         # security group for elastic
@@ -75,7 +77,9 @@ class ElasticStack(core.Stack):
 
         # ingress for elastic from self
         self.elastic_security_group.connections.allow_from(
-            self.elastic_security_group, ec2.Port.all_traffic(), "within elastic",
+            self.elastic_security_group,
+            ec2.Port.all_traffic(),
+            "within elastic",
         )
         # ingress for elastic from elastic client
         self.elastic_security_group.connections.allow_from(
@@ -85,12 +89,18 @@ class ElasticStack(core.Stack):
         )
         # ingress for elastic client from elastic
         elastic_client_security_group.connections.allow_from(
-            self.elastic_security_group, ec2.Port.all_traffic(), "from elastic",
+            self.elastic_security_group,
+            ec2.Port.all_traffic(),
+            "from elastic",
         )
 
         # elastic policy
         elastic_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW, actions=["es:*",], resources=["*"],
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "es:*",
+            ],
+            resources=["*"],
         )
         elastic_policy.add_any_principal()
         elastic_document = iam.PolicyDocument()
@@ -120,8 +130,8 @@ class ElasticStack(core.Stack):
                 "subnetIds": vpc_stack.get_vpc_private_subnet_ids,
             },
             access_policies=elastic_document,
-            #log_publishing_options={"enabled": True},
-            #cognito_options={"enabled": True},
+            # log_publishing_options={"enabled": True},
+            # cognito_options={"enabled": True},
         )
         core.Tag.add(self.elastic_domain, "project", constants["PROJECT_TAG"])
 
@@ -163,6 +173,8 @@ class ElasticStack(core.Stack):
             # add the signal
             elastic_userdata.add_signal_on_exit_command(resource=elastic_instance)
             # add creation policy for instance
-            elastic_instance.instance.cfn_options.creation_policy = core.CfnCreationPolicy(
-                resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+            elastic_instance.instance.cfn_options.creation_policy = (
+                core.CfnCreationPolicy(
+                    resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
+                )
             )
