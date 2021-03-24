@@ -1,8 +1,8 @@
 # import modules
-from subprocess import call
 from aws_cdk import (
     core,
     aws_lambda as lambda_,
+    aws_lambda_python as lambda_python,
     aws_apigateway as apigw,
     aws_s3 as s3,
     aws_cloudfront as cloudfront,
@@ -34,21 +34,6 @@ class KibanaStack(core.Stack):
     ) -> None:
         super().__init__(scope, id_, **kwargs)
 
-        # if update lambda zip (including if zip doesn't exist)
-        if (
-            update_lambda_zip
-            or not dirname.joinpath("kibana_lambda.zip").exists()
-            
-        ):
-            # rebuild the lambda if changed
-            call(["docker", "build", "--tag", "kibana-lambda", "."], cwd=dirname)
-            call(
-                ["docker", "create", "-ti", "--name", "dummy", "kibana-lambda", "bash"],
-                cwd=dirname,
-            )
-            call(["docker", "cp", "dummy:/tmp/kibana_lambda.zip", "."], cwd=dirname)
-            call(["docker", "rm", "-f", "dummy"], cwd=dirname)
-
         kibana_bucket = s3.Bucket(
             self,
             "kibana_bucket",
@@ -60,12 +45,13 @@ class KibanaStack(core.Stack):
         core.Tag.add(kibana_bucket, "project", constants["PROJECT_TAG"])
 
         # the lambda behind the api
-        kibana_lambda = lambda_.Function(
+        kibana_lambda = lambda_python.PythonFunction(
             self,
             "kibana_lambda",
+            entry=str(dirname),
             description="kibana api gateway lambda",
-            code=lambda_.Code.from_asset(str(dirname.joinpath("kibana_lambda.zip"))),
-            handler="lambda_function.lambda_handler",
+            index="lambda_function.py",
+            handler="lambda_handler",
             timeout=core.Duration.seconds(300),
             runtime=lambda_.Runtime.PYTHON_3_8,
             vpc=vpc_stack.get_vpc,

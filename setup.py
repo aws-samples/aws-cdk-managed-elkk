@@ -23,6 +23,7 @@ setuptools.setup(
         "aws_cdk.aws_elasticsearch",
         "aws_cdk.aws_s3_assets",
         "aws_cdk.aws_lambda",
+        "aws_cdk.aws_lambda_python",
         "aws_cdk.aws_logs",
         "aws_cdk.aws_s3",
         "aws_cdk.aws_cloudformation",
