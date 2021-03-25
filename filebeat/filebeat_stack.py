@@ -69,13 +69,13 @@ class FilebeatStack(core.Stack):
             machine_image=ec2.AmazonLinuxImage(
                 generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
             ),
-            vpc=vpc_stack.get_vpc,
+            vpc=vpc_stack.output_props["vpc"],
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
             key_name=constants["KEY_PAIR"],
-            security_group=kafka_stack.get_kafka_client_security_group,
+            security_group=kafka_stack.output_props["kafka_client_security_group"],
             user_data=fb_userdata,
         )
-        core.Tag.add(fb_instance, "project", constants["PROJECT_TAG"])
+        core.Tags.of(fb_instance).add("project", constants["PROJECT_TAG"])
 
         # create policies for EC2 to connect to kafka
         access_kafka_policy = iam.PolicyStatement(

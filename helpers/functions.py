@@ -1,9 +1,7 @@
 # modules
-import os
 import boto3
 from botocore.exceptions import ClientError
 from pathlib import Path
-import hashlib
 from aws_cdk import (
     core,
     aws_ec2 as ec2,
@@ -11,6 +9,7 @@ from aws_cdk import (
     aws_logs as logs,
 )
 
+app = core.App()
 # set boto3 client for amazon managged kafka
 kafkaclient = boto3.client("kafka")
 # set the boto3 client for amazon elasticsearch
@@ -19,6 +18,8 @@ esclient = boto3.client("es")
 iamclient = boto3.client("iam")
 # set the client for logs
 logs_client = boto3.client("logs")
+# get constants
+constants = app.node.try_get_context("constants")
 
 # helper to create updated assets
 def file_updated(file_name: str = "", updates: dict = {}):

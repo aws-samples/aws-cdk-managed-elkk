@@ -54,12 +54,12 @@ class KibanaStack(core.Stack):
             handler="lambda_handler",
             timeout=core.Duration.seconds(300),
             runtime=lambda_.Runtime.PYTHON_3_8,
-            vpc=vpc_stack.get_vpc,
-            security_groups=[elastic_stack.elastic_security_group],
+            vpc=vpc_stack.output_props["vpc"],
+            security_groups=[elastic_stack.outputs["elastic_security_group"]],
             log_retention=logs.RetentionDays.ONE_WEEK,
         )
         # tag the lambda
-        core.Tag.add(kibana_lambda, "project", constants["PROJECT_TAG"])
+        core.Tags.of(kibana_lambda).add("project", constants["PROJECT_TAG"])
         # create policies for the lambda
         kibana_lambda_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
@@ -76,7 +76,7 @@ class KibanaStack(core.Stack):
             self, "kibana_api", handler=kibana_lambda, binary_media_types=["*/*"]
         )
         # tag the api gateway
-        core.Tag.add(kibana_api, "project", constants["PROJECT_TAG"])
+        core.Tags.of(kibana_api).add("project", constants["PROJECT_TAG"])
 
         kibana_identity = cloudfront.OriginAccessIdentity(self, "kibana_identity")
 
@@ -134,7 +134,7 @@ class KibanaStack(core.Stack):
             ],
         )
         # tag the cloudfront distribution
-        core.Tag.add(kibana_distribution, "project", constants["PROJECT_TAG"])
+        core.Tags.of(kibana_distribution).add("project", constants["PROJECT_TAG"])
         # needs api and bucket to be available
         kibana_distribution.node.add_dependency(kibana_api)
 
@@ -165,7 +165,7 @@ class KibanaStack(core.Stack):
             ResourcePolicies=kibana_bucket_empty_policy,
         )
         # tag the lamdbda
-        core.Tag.add(kibana_bucket_empty, "project", constants["PROJECT_TAG"])
+        core.Tags.of(kibana_bucket_empty).add("project", constants["PROJECT_TAG"])
         # needs a dependancy
         kibana_bucket_empty.node.add_dependency(kibana_bucket)
 
@@ -197,7 +197,7 @@ class KibanaStack(core.Stack):
             ResourcePolicies=kibana_lambda_update_policy,
         )
         # tag the lamdbda
-        core.Tag.add(kibana_lambda_update, "project", constants["PROJECT_TAG"])
+        core.Tags.of(kibana_lambda_update).add("project", constants["PROJECT_TAG"])
         # needs a dependancy
         kibana_lambda_update.node.add_dependency(kibana_bucket)
         kibana_lambda_update.node.add_dependency(kibana_distribution)

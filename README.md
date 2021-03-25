@@ -49,6 +49,10 @@ Docker - https://www.docker.com/
 
 If desired AWS Cloud9 set up is detailed in the [AWS Cloud9 setup Instructions](cloud9.md).
 
+Update the constants values in cdk.json.
+Ensure that the kafka version is available via wget. 
+Ensure the the named keypair exists and is accessible. The ssh comments using the keypair assume it has been added to the keychain.
+
 ### Create the Managed ELKK 
 
 Complete the following steps to set up the Managed ELKK workshop in your environment.
@@ -124,6 +128,8 @@ The CDK will prompt to apply Security Changes, input "y" for Yes.
 
 When Client is set to True an Amazon EC2 instance is deployed to interact with the Amazon MSK Cluster. It can take up to 30 minutes for the Amazon MSK cluster and client EC2 instance to be deployed.
 
+If they keypair named in cdk.json is not found, the stack will skip the instance creation.
+
 ![ELKK Kafka - 2](/img/elkk_kafka_idx_2.png)
 
 Wait until 2/2 checks are completed on the Kafka client EC2 instance to ensure that the userdata scripts have fully run.
@@ -138,6 +144,7 @@ Open a terminal window to connect to the Kafka client Amazon EC2 instance and cr
 # get the ec2 instance public dns
 kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
 # use the public dns to connect to the amazon ec2 instance
+# if the ssh does not connect, double-check the kafka client security group inbound ssh rule "from own public ip" and ensure the source IP is correct
 ssh ec2-user@$kafka_client_dns
 ```
 
@@ -151,7 +158,7 @@ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].Clu
 # Get the bootstrap brokers
 kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a producer on the Kafka topic "elkktopic" 
-/opt/kafka_2.12-2.4.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkktopic
+/opt/kafka_2.13-2.7.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkktopic
 ```
 
 ![ElKK Kafka - 5](/img/elkk_kafka_idx_5.png)
@@ -181,7 +188,7 @@ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].Clu
 # Get the bootstrap brokers
 kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a consumer
-/opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkktopic --from-beginning
+/opt/kafka_2.13-2.7.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkktopic --from-beginning
 ```
 
 Type messages into the Kafka producer session and they are published to the Amazon MSK cluster
@@ -191,8 +198,6 @@ Type messages into the Kafka producer session and they are published to the Amaz
 The messages published to the Amazon MS cluster by the producer session will appear in the Kafka consumer window as they are read from the cluster.
 
 ![ElKK Kafka - 9](/img/elkk_kafka_idx_9.png)
-
-The Kafka client EC2 instance windows can be closed.
 
 -----
 ## Filebeat <a name=filebeat></a>
@@ -212,7 +217,7 @@ An Amazon EC2 instance is deployed with Filebeat installed and configured to out
 
 ![ElKK Filebeat - 2](/img/elkk_filebeat_idx_2.png)
 
-Wait until 2/2 checks are completed on the Filebeat EC2 instance to ensure that the userdata script as run.
+Wait until 2/2 checks are completed on the Filebeat EC2 instance to ensure that the userdata script has run.
 
 Open a new terminal window connect to the Filebeat EC2 instance and create create dummy logs:
 
@@ -246,7 +251,7 @@ kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].Clu
 # Get the bootstrap brokers
 kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
 # Connect to the cluster as a consumer
-/opt/kafka_2.12-2.4.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic apachelog --from-beginning
+/opt/kafka_2.13-2.7.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic apachelog --from-beginning
 ```
 
 ![ElKK Filebeat - 5](/img/elkk_filebeat_idx_5.png)

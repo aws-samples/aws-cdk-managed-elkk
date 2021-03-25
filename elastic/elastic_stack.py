@@ -45,12 +45,12 @@ class ElasticStack(core.Stack):
         elastic_client_security_group = ec2.SecurityGroup(
             self,
             "elastic_client_security_group",
-            vpc=vpc_stack.get_vpc,
+            vpc=vpc_stack.output_props["vpc"],
             description="elastic client security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(elastic_client_security_group, "project", constants["PROJECT_TAG"])
-        core.Tag.add(elastic_client_security_group, "Name", "elastic_client_sg")
+        core.Tags.of(elastic_client_security_group).add("project", constants["PROJECT_TAG"])
+        core.Tags.of(elastic_client_security_group).add("Name", "elastic_client_sg")
         # Open port 22 for SSH
         elastic_client_security_group.add_ingress_rule(
             ec2.Peer.ipv4(f"{external_ip}/32"),
@@ -65,31 +65,31 @@ class ElasticStack(core.Stack):
         )
 
         # security group for elastic
-        self.elastic_security_group = ec2.SecurityGroup(
+        elastic_security_group = ec2.SecurityGroup(
             self,
             "elastic_security_group",
-            vpc=vpc_stack.get_vpc,
+            vpc=vpc_stack.output_props["vpc"],
             description="elastic security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(self.elastic_security_group, "project", constants["PROJECT_TAG"])
-        core.Tag.add(self.elastic_security_group, "Name", "elastic_sg")
+        core.Tags.of(elastic_security_group).add("project", constants["PROJECT_TAG"])
+        core.Tags.of(elastic_security_group).add("Name", "elastic_sg")
 
         # ingress for elastic from self
-        self.elastic_security_group.connections.allow_from(
-            self.elastic_security_group,
+        elastic_security_group.connections.allow_from(
+            elastic_security_group,
             ec2.Port.all_traffic(),
             "within elastic",
         )
         # ingress for elastic from elastic client
-        self.elastic_security_group.connections.allow_from(
+        elastic_security_group.connections.allow_from(
             elastic_client_security_group,
             ec2.Port.all_traffic(),
             "from elastic client",
         )
         # ingress for elastic client from elastic
         elastic_client_security_group.connections.allow_from(
-            self.elastic_security_group,
+            elastic_security_group,
             ec2.Port.all_traffic(),
             "from elastic",
         )
@@ -119,21 +119,21 @@ class ElasticStack(core.Stack):
             cluster_config["dedicatedMasterCount"] = constants["ELASTIC_MASTER_COUNT"]
 
         # create the elastic cluster
-        self.elastic_domain = aes.CfnDomain(
+        elastic_domain = aes.CfnDomain(
             self,
             "elastic_domain",
             elasticsearch_cluster_config=cluster_config,
             elasticsearch_version=constants["ELASTIC_VERSION"],
             ebs_options={"ebsEnabled": True, "volumeSize": 10},
             vpc_options={
-                "securityGroupIds": [self.elastic_security_group.security_group_id],
-                "subnetIds": vpc_stack.get_vpc_private_subnet_ids,
+                "securityGroupIds": [elastic_security_group.security_group_id],
+                "subnetIds": vpc_stack.output_props["vpc"]
+                .select_subnets(subnet_type=ec2.SubnetType.PRIVATE)
+                .subnet_ids,
             },
             access_policies=elastic_document,
-            # log_publishing_options={"enabled": True},
-            # cognito_options={"enabled": True},
         )
-        core.Tag.add(self.elastic_domain, "project", constants["PROJECT_TAG"])
+        core.Tags.of(elastic_domain).add("project", constants["PROJECT_TAG"])
 
         # instance for elasticsearch
         if client == True:
@@ -147,15 +147,15 @@ class ElasticStack(core.Stack):
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
-                vpc=vpc_stack.get_vpc,
+                vpc=vpc_stack.output_props["vpc"],
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
                 key_name=constants["KEY_PAIR"],
                 security_group=elastic_client_security_group,
                 user_data=elastic_userdata,
             )
-            core.Tag.add(elastic_instance, "project", constants["PROJECT_TAG"])
+            core.Tags.of(elastic_instance).add("project", constants["PROJECT_TAG"])
             # needs elastic domain to be available
-            elastic_instance.node.add_dependency(self.elastic_domain)
+            elastic_instance.node.add_dependency(elastic_domain)
             # create policies for EC2 to connect to Elastic
             access_elastic_policy = iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
@@ -178,3 +178,11 @@ class ElasticStack(core.Stack):
                     resource_signal=core.CfnResourceSignal(count=1, timeout="PT10M")
                 )
             )
+
+        self.output_props = {}
+        self.output_props["elastic_security_group"] = elastic_security_group
+
+    # properties
+    @property
+    def outputs(self):
+        return self.output_props

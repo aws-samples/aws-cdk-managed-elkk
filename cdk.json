@@ -2,9 +2,10 @@
   "app": "python app.py",
   "context": {
     "constants": {
+      "VPC_ID": "vpc-03828e2e222e1d5f7",
       "PROJECT_TAG": "elkk-stack",
       "KEY_PAIR": "elk-key-pair",
-      "KAFKA_DOWNLOAD_VERSION": "kafka_2.12-2.4.0",
+      "KAFKA_DOWNLOAD_VERSION": "kafka_2.13-2.7.0",
       "KAFKA_BROKER_NODES": 3,
       "KAFKA_VERSION": "2.3.1",
       "KAFKA_INSTANCE_TYPE": "kafka.m5.large",
@@ -16,7 +17,7 @@
       "ELASTIC_MASTER_INSTANCE": "r5.large.elasticsearch",
       "ELASTIC_INSTANCE_COUNT": 3,
       "ELASTIC_INSTANCE": "r5.large.elasticsearch",
-      "ELASTIC_VERSION": "7.1",
+      "ELASTIC_VERSION": "7.9",
       "LOGSTASH_INSTANCE": "t2.xlarge"
     }
   }

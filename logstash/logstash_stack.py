@@ -105,7 +105,7 @@ class LogstashStack(core.Stack):
         logstash_security_group = ec2.SecurityGroup(
             self,
             "logstash_security_group",
-            vpc=vpc_stack.get_vpc,
+            vpc=vpc_stack.output_props["vpc"],
             description="logstash security group",
             allow_all_outbound=True,
         )
@@ -213,7 +213,7 @@ class LogstashStack(core.Stack):
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
-                vpc=vpc_stack.get_vpc,
+                vpc=vpc_stack.output_props["vpc"],
                 vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
                 key_name=constants["KEY_PAIR"],
                 security_group=logstash_security_group,
@@ -292,12 +292,14 @@ class LogstashStack(core.Stack):
             )
             # docker image for logstash
             logstash_image_asset = ecr_assets.DockerImageAsset(
-                self, "logstash_image_asset", directory=str(dirname)  # , file="Dockerfile"
+                self,
+                "logstash_image_asset",
+                directory=str(dirname),  # , file="Dockerfile"
             )
 
             # create the fargate cluster
             logstash_cluster = ecs.Cluster(
-                self, "logstash_cluster", vpc=vpc_stack.get_vpc
+                self, "logstash_cluster", vpc=vpc_stack.output_props["vpc"]
             )
             core.Tag.add(logstash_cluster, "project", constants["PROJECT_TAG"])
 
