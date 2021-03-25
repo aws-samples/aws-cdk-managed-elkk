@@ -47,11 +47,8 @@ Git -  https://git-scm.com/downloads
 python (3.6 or later) - https://www.python.org/downloads/  
 Docker - https://www.docker.com/  
 
-If desired AWS Cloud9 set up is detailed in the [AWS Cloud9 setup Instructions](cloud9.md).
-
 Update the constants values in cdk.json.
 Ensure that the kafka version is available via wget. 
-Ensure the the named keypair exists and is accessible. The ssh comments using the keypair assume it has been added to the keychain.
 
 ### Create the Managed ELKK 
 
@@ -77,6 +74,18 @@ python -m venv .env
 source .env/bin/activate
 # install the requirements
 .env/bin/python -m pip install -r requirements.txt
+# create the key pair (if not using an existing key)
+# Ensure the the named keypair exists and is accessible.
+# The ssh comments using the keypair assume it has been added to the keychain.
+aws ec2 create-key-pair --key-name elk-key-pair --query 'KeyMaterial' --output text > elk-key-pair --region us-east-1
+# update key_pair permissions
+chmod 400 yourkeypair.pem
+# move key_pair to .ssh
+mv -f yourkeypair.pem $HOME/.ssh/yourkeypair.pem
+# start the ssh agent
+eval `ssh-agent -s`
+# add your key to keychain
+ssh-add -k ~/.ssh/yourkeypair.pem 
 ```
 
 ![Create Elkk - 2](/img/create_elkk_idx_2.png)

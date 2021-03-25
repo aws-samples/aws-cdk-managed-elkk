@@ -109,8 +109,8 @@ class LogstashStack(core.Stack):
             description="logstash security group",
             allow_all_outbound=True,
         )
-        core.Tag.add(logstash_security_group, "project", constants["PROJECT_TAG"])
-        core.Tag.add(logstash_security_group, "Name", "logstash_sg")
+        core.Tags.of(logstash_security_group).add("project", constants["PROJECT_TAG"])
+        core.Tags.of(logstash_security_group).add("Name", "logstash_sg")
 
         # Open port 22 for SSH
         logstash_security_group.add_ingress_rule(
@@ -219,7 +219,7 @@ class LogstashStack(core.Stack):
                 security_group=logstash_security_group,
                 user_data=logstash_userdata,
             )
-            core.Tag.add(logstash_instance, "project", constants["PROJECT_TAG"])
+            core.Tags.of(logstash_instance).add("project", constants["PROJECT_TAG"])
 
             # add access to the file assets
             logstash_yml.grant_read(logstash_instance)
@@ -301,7 +301,7 @@ class LogstashStack(core.Stack):
             logstash_cluster = ecs.Cluster(
                 self, "logstash_cluster", vpc=vpc_stack.output_props["vpc"]
             )
-            core.Tag.add(logstash_cluster, "project", constants["PROJECT_TAG"])
+            core.Tags.of(logstash_cluster).add("project", constants["PROJECT_TAG"])
 
             # the task
             logstash_task = ecs.FargateTaskDefinition(
