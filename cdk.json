@@ -9,6 +9,7 @@
       "KAFKA_BROKER_NODES": 3,
       "KAFKA_VERSION": "2.3.1",
       "KAFKA_INSTANCE_TYPE": "kafka.m5.large",
+      "BUILD_KAFKA_CLIENT": true,
       "KAFKA_CLIENT_INSTANCE": "t2.xlarge",
       "FILEBEAT_INSTANCE": "t2.xlarge",
       "ELASTIC_CLIENT_INSTANCE": "t2.xlarge",

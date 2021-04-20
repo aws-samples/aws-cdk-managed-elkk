@@ -1,6 +1,8 @@
 # import modules
 from aws_cdk import core, aws_s3 as s3, aws_iam as iam, aws_glue as glue
-from helpers.custom_resource import CustomResource
+
+# from helpers.custom_resource import CustomResource
+from bucket_cleaner.custom_resource import BucketCleaner
 
 # set path
 from pathlib import Path
@@ -37,38 +39,17 @@ class AthenaStack(core.Stack):
         # tag the bucket
         core.Tags.of(s3_bucket).add("project", constants["PROJECT_TAG"])
 
-        # lambda policies
-        athena_bucket_empty_policy = [
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["s3:ListBucket"],
-                resources=["*"],
-            ),
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=[
-                    "s3:DeleteObject",
-                ],
-                resources=[f"{s3_bucket.bucket_arn}/*"],
-            ),
-        ]
-
-        # create the custom resource
-        athena_bucket_empty = CustomResource(
+        # cleaner action on delete
+        s3_bucket_cleaner = BucketCleaner(
             self,
-            "athena_bucket_empty",
-            PhysicalId="athenaBucketEmpty",
-            Description="Empty athena s3 bucket",
-            Uuid="f7d4f730-4ee1-11e8-9c2d-fa7ae01bbebc",
-            HandlerPath=str(dirname.parent.joinpath("helpers/s3_bucket_empty.py")),
-            BucketName=s3_bucket.bucket_name,
-            ResourcePolicies=athena_bucket_empty_policy,
+            "s3_bucket_cleaner",
+            buckets=[s3_bucket],
+            lambda_description=f"On delete empty {core.Stack.stack_name} S3 buckets",
         )
-        # needs a dependancy
-        athena_bucket_empty.node.add_dependency(s3_bucket)
 
         self.output_props = {}
         self.output_props["s3_bucket"] = s3_bucket
+
 
     # properties
     @property

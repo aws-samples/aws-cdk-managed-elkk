@@ -17,7 +17,9 @@ dirname = Path(__file__).parent
 
 from aws_cdk.aws_cloudfront import CfnDistribution
 
-from helpers.custom_resource import CustomResource
+from bucket_cleaner.custom_resource import BucketCleaner
+from kibana_lambda_update.custom_resource import KibanaLambdaUpdate
+
 from helpers.functions import elastic_get_endpoint, elastic_get_domain
 
 
@@ -139,35 +141,35 @@ class KibanaStack(core.Stack):
         kibana_distribution.node.add_dependency(kibana_api)
 
         # kibana bucket empty policies
-        kibana_bucket_empty_policy = [
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["s3:ListBucket"],
-                resources=["*"],
-            ),
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=[
-                    "s3:DeleteObject",
-                ],
-                resources=[f"{kibana_bucket.bucket_arn}/*"],
-            ),
-        ]
+        # kibana_bucket_empty_policy = [
+        #     iam.PolicyStatement(
+        #        effect=iam.Effect.ALLOW,
+        #        actions=["s3:ListBucket"],
+        #        resources=["*"],
+        #    ),
+        #    iam.PolicyStatement(
+        #        effect=iam.Effect.ALLOW,
+        #        actions=[
+        #            "s3:DeleteObject",
+        #        ],
+        #        resources=[f"{kibana_bucket.bucket_arn}/*"],
+        #    ),
+        # ]
         # create the custom resource
-        kibana_bucket_empty = CustomResource(
-            self,
-            "kibana_bucket_empty",
-            PhysicalId="kibanaBucketEmpty",
-            Description="Empty kibana cache s3 bucket",
-            Uuid="f7d4f730-4ee1-13e8-9c2d-fa7ae06bbebc",
-            HandlerPath=str(dirname.parent.joinpath("helpers/s3_bucket_empty.py")),
-            BucketName=kibana_bucket.bucket_name,
-            ResourcePolicies=kibana_bucket_empty_policy,
-        )
+        # kibana_bucket_empty = CustomResource(
+        #    self,
+        #    "kibana_bucket_empty",
+        #    PhysicalId="kibanaBucketEmpty",
+        #    Description="Empty kibana cache s3 bucket",
+        #    Uuid="f7d4f730-4ee1-13e8-9c2d-fa7ae06bbebc",
+        #    HandlerPath=str(dirname.parent.joinpath("helpers/s3_bucket_empty.py")),
+        #    BucketName=kibana_bucket.bucket_name,
+        #    ResourcePolicies=kibana_bucket_empty_policy,
+        # )
         # tag the lamdbda
-        core.Tags.of(kibana_bucket_empty).add("project", constants["PROJECT_TAG"])
+        # core.Tags.of(kibana_bucket_empty).add("project", constants["PROJECT_TAG"])
         # needs a dependancy
-        kibana_bucket_empty.node.add_dependency(kibana_bucket)
+        # kibana_bucket_empty.node.add_dependency(kibana_bucket)
 
         # kibana lambda update policies
         kibana_lambda_update_policy = [
@@ -187,20 +189,20 @@ class KibanaStack(core.Stack):
             )
         ]
         # create the kibana lambda update
-        kibana_lambda_update = CustomResource(
-            self,
-            "kibana_lambda_update",
-            Description="Update ENV vars for kibana api lambda",
-            PhysicalId="kibanaLambdaUpdate",
-            Uuid="f7d4f230-4ee1-07e8-9c2d-fa7ae06bbebc",
-            HandlerPath=str(dirname.parent.joinpath("helpers/lambda_env_update.py")),
-            ResourcePolicies=kibana_lambda_update_policy,
-        )
-        # tag the lamdbda
-        core.Tags.of(kibana_lambda_update).add("project", constants["PROJECT_TAG"])
-        # needs a dependancy
-        kibana_lambda_update.node.add_dependency(kibana_bucket)
-        kibana_lambda_update.node.add_dependency(kibana_distribution)
+        #kibana_lambda_update = core.CustomResource(
+        #    self,
+        #    "kibana_lambda_update",
+        #    Description="Update ENV vars for kibana api lambda",
+        #    PhysicalId="kibanaLambdaUpdate",
+        #    Uuid="f7d4f230-4ee1-07e8-9c2d-fa7ae06bbebc",
+        #    HandlerPath=str(dirname.parent.joinpath("helpers/lambda_env_update.py")),
+        #    ResourcePolicies=kibana_lambda_update_policy,
+        #)
+        ## tag the lamdbda
+        #core.Tags.of(kibana_lambda_update).add("project", constants["PROJECT_TAG"])
+        ## needs a dependancy
+        #kibana_lambda_update.node.add_dependency(kibana_bucket)
+        #kibana_lambda_update.node.add_dependency(kibana_distribution)
 
         core.CfnOutput(
             self,
@@ -208,4 +210,20 @@ class KibanaStack(core.Stack):
             value=f"https://{kibana_distribution.domain_name}/_plugin/kibana",
             description="Kibana Web Url",
             export_name="kibana-link",
+        )
+
+        # lambda update
+        kibana_lambda_update = KibanaLambdaUpdate(
+            self,
+            "kibana_lambda_update",
+        )
+        kibana_lambda_update.node.add_dependency(kibana_bucket)
+        kibana_lambda_update.node.add_dependency(kibana_distribution)
+
+        # cleaner action on delete
+        s3_bucket_cleaner = BucketCleaner(
+            self,
+            "s3_bucket_cleaner",
+            buckets=[kibana_bucket],
+            lambda_description=f"On delete empty {core.Stack.stack_name} S3 buckets",
         )

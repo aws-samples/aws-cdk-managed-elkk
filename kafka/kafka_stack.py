@@ -10,6 +10,7 @@ from aws_cdk import (
     aws_s3_assets as assets,
 )
 
+
 kafka = boto3.client("kafka")
 ec2_client = boto3.client("ec2")
 
@@ -127,8 +128,25 @@ class KafkaStack(core.Stack):
         )
         core.Tags.of(kafka_cluster).add("project", constants["PROJECT_TAG"])
 
+        init_awslogs = ec2.InitConfig(
+            [
+                ec2.InitCommand.shell_command(
+                    "yum update -y",
+                ),
+                ec2.InitPackage.yum("awslogs"),
+                ec2.InitCommand.shell_command(
+                    "sed -i 's#log_group_name = /var/log/messages#log_group_name = elkk/kafka/instance#' /etc/awslogs/awslogs.conf"
+                ),
+                ec2.InitService.enable("awslogsd"),
+                ec2.InitCommand.shell_command(
+                    f"sudo -u ec2-user aws configure set region {core.Aws.REGION}",
+                ),
+            ]
+        )
+
         # instance for kafka client and check for the key pair
-        if client == True:
+        if constants["BUILD_KAFKA_CLIENT"]:
+
             if (
                 len(
                     ec2_client.describe_key_pairs(
@@ -151,11 +169,39 @@ class KafkaStack(core.Stack):
                     machine_image=ec2.AmazonLinuxImage(
                         generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                     ),
+                    init=ec2.CloudFormationInit.from_config_sets(
+                        config_sets={"default": ["awsLogs", "kafka"]},
+                        configs={
+                            "awsLogs": init_awslogs,
+                            "kafka": ec2.InitConfig(
+                                [
+                                    # get setup assets files
+                                    ec2.InitCommand.shell_command(
+                                        f"aws s3 cp s3://{client_properties.s3_bucket_name}/{client_properties.s3_object_key} /home/ec2-user/client.properties"
+                                    ),
+                                    # install java
+                                    ec2.InitPackage.yum("java-1.8.0-openjdk"),
+                                    # download kafka
+                                    ec2.InitCommand.shell_command(
+                                        f'wget https://www-us.apache.org/dist/kafka/{constants["KAFKA_DOWNLOAD_VERSION"].split("-")[-1]}/{constants["KAFKA_DOWNLOAD_VERSION"]}.tgz'
+                                    ),
+                                    # extract kafka
+                                    ec2.InitCommand.shell_command(
+                                        f"tar -xvf {constants['KAFKA_DOWNLOAD_VERSION']}.tgz",
+                                    ),
+                                ]
+                            ),
+                        },
+                    ),
+                    init_options={
+                        "config_sets": ["default"],
+                        "timeout": core.Duration.minutes(30),
+                    },
                     vpc=vpc_stack.output_props["vpc"],
                     vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
                     key_name=constants["KEY_PAIR"],
                     security_group=kafka_client_security_group,
-                    user_data=kafka_client_userdata,
+                    # user_data=kafka_client_userdata,
                 )
                 core.Tags.of(kafka_client_instance).add(
                     "project", constants["PROJECT_TAG"]
@@ -205,7 +251,7 @@ class KafkaStack(core.Stack):
                     resource=kafka_client_instance
                 )
                 # attach the userdata
-                kafka_client_instance.add_user_data(kafka_client_userdata.render())
+                # kafka_client_instance.add_user_data(kafka_client_userdata.render())
             else:
                 print(
                     f"Keypair {constants['KEY_PAIR']} not found, instance creation skipped"
@@ -213,6 +259,7 @@ class KafkaStack(core.Stack):
 
         self.output_props = {}
         self.output_props["kafka_client_security_group"] = kafka_client_security_group
+        self.output_props["input_awslogs"] = init_awslogs
 
     # properties
     @property
