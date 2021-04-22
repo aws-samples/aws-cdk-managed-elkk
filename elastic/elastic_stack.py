@@ -32,15 +32,6 @@ class ElasticStack(core.Stack):
         # ensure that the service linked role exists
         ensure_service_linked_role("es.amazonaws.com")
 
-        # cloudwatch log group
-        elastic_log_group = logs.LogGroup(
-            self,
-            "elastic_log_group",
-            log_group_name="elkk/elastic/aes",
-            removal_policy=core.RemovalPolicy.DESTROY,
-            retention=logs.RetentionDays.ONE_WEEK,
-        )
-
         # security group for elastic client
         elastic_client_security_group = ec2.SecurityGroup(
             self,
@@ -49,7 +40,9 @@ class ElasticStack(core.Stack):
             description="elastic client security group",
             allow_all_outbound=True,
         )
-        core.Tags.of(elastic_client_security_group).add("project", constants["PROJECT_TAG"])
+        core.Tags.of(elastic_client_security_group).add(
+            "project", constants["PROJECT_TAG"]
+        )
         core.Tags.of(elastic_client_security_group).add("Name", "elastic_client_sg")
         # Open port 22 for SSH
         elastic_client_security_group.add_ingress_rule(
@@ -106,32 +99,38 @@ class ElasticStack(core.Stack):
         elastic_document = iam.PolicyDocument()
         elastic_document.add_statements(elastic_policy)
 
-        # cluster config
-        cluster_config = {
-            "instanceCount": constants["ELASTIC_INSTANCE_COUNT"],
-            "instanceType": constants["ELASTIC_INSTANCE"],
-            "zoneAwarenessEnabled": True,
-            "zoneAwarenessConfig": {"availabilityZoneCount": 3},
-        }
-        if constants["ELASTIC_DEDICATED_MASTER"] == True:
-            cluster_config["dedicatedMasterEnabled"] = True
-            cluster_config["dedicatedMasterType"] = constants["ELASTIC_MASTER_INSTANCE"]
-            cluster_config["dedicatedMasterCount"] = constants["ELASTIC_MASTER_COUNT"]
-
-        # create the elastic cluster
-        elastic_domain = aes.CfnDomain(
+        # create the cluster
+        elastic_domain = aes.Domain(
             self,
             "elastic_domain",
-            elasticsearch_cluster_config=cluster_config,
-            elasticsearch_version=constants["ELASTIC_VERSION"],
-            ebs_options={"ebsEnabled": True, "volumeSize": 10},
-            vpc_options={
-                "securityGroupIds": [elastic_security_group.security_group_id],
-                "subnetIds": vpc_stack.output_props["vpc"]
-                .select_subnets(subnet_type=ec2.SubnetType.PRIVATE)
-                .subnet_ids,
-            },
-            access_policies=elastic_document,
+            version=aes.ElasticsearchVersion.V7_9,
+            capacity=aes.CapacityConfig(
+                data_node_instance_type=constants["ELASTIC_INSTANCE"],
+                data_nodes=constants["ELASTIC_INSTANCE_COUNT"],
+                master_node_instance_type=constants["ELASTIC_MASTER_INSTANCE"],
+                master_nodes=constants["ELASTIC_MASTER_COUNT"],
+            ),
+            removal_policy=core.RemovalPolicy.DESTROY,
+            access_policies=[
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    principals=[iam.AccountRootPrincipal()],
+                    actions=[
+                        "es:*",
+                    ],
+                    resources=["*"],
+                )
+            ],
+            ebs=aes.EbsOptions(enabled=True, volume_size=10),
+            vpc=vpc_stack.output_props["vpc"],
+            vpc_subnets=[
+                ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE, one_per_az=True)
+            ],
+            zone_awareness=aes.ZoneAwarenessConfig(
+                availability_zone_count=3, enabled=True
+            ),
+            security_groups=[elastic_security_group],
+            logging=aes.LoggingOptions(app_log_enabled=True),
         )
         core.Tags.of(elastic_domain).add("project", constants["PROJECT_TAG"])
 
@@ -148,7 +147,9 @@ class ElasticStack(core.Stack):
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
                 vpc=vpc_stack.output_props["vpc"],
-                vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
+                vpc_subnets=ec2.SubnetSelection(
+                    subnet_type=ec2.SubnetType.PRIVATE, one_per_az=True
+                ),
                 key_name=constants["KEY_PAIR"],
                 security_group=elastic_client_security_group,
                 user_data=elastic_userdata,
