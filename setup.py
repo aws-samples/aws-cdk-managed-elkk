@@ -15,8 +15,8 @@ setuptools.setup(
     package_dir={},
     packages=setuptools.find_packages(),
     install_requires=[
-        "awscli",
         "aws_cdk.core",
+        "aws_cdk.custom_resources",
         "aws_cdk.aws_ec2",
         "aws_cdk.aws_iam",
         "aws_cdk.aws_msk",
@@ -30,7 +30,10 @@ setuptools.setup(
         "aws_cdk.aws_ecs",
         "aws_cdk.aws_ecr_assets",
         "aws_cdk.aws_glue",
+        "awscli",
+        "black",
         "boto3",
+        "pip==21.0.1",
     ],
     python_requires=">=3.6",
     classifiers=[

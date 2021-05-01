@@ -17,7 +17,7 @@ def lambda_handler(event, context):
         return on_update(event)
     if request_type == "Delete":
         return on_delete(event)
-    raise Exception("Invalid request type: %s" % request_type)
+    raise Exception(f"Invalid request type: {request_type}")
 
 
 def on_create(event):

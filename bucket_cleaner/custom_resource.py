@@ -1,11 +1,11 @@
 from aws_cdk import (
     aws_cloudformation as cfn,
-    custom_resources as cr,
     aws_iam as iam,
     aws_lambda as lambda_,
     aws_lambda_python as lambda_python,
-    core,
     aws_logs as logs,
+    core,
+    custom_resources as cr,
 )
 import json
 
@@ -21,22 +21,21 @@ class BucketCleaner(core.Construct):
         scope: core.Construct,
         id: str,
         buckets: list,
-        lambda_description: str,
         **kwargs,
     ) -> None:
         super().__init__(scope, id)
 
         # cleaner lambda
-        cleaner_lambda = lambda_python.PythonFunction(
+        on_event_lambda = lambda_python.PythonFunction(
             self,
-            "cleaner_lambda",
-            description=lambda_description,
-            entry=str(dirname),
+            "on_event_lambda",
+            description=f"On delete empty {core.Stack.stack_name} S3 buckets",
+            entry=str(dirname.joinpath("on_event")),
             environment={
                 "BUCKETS": json.dumps([f"{bucket.bucket_name}" for bucket in buckets]),
             },
             handler="lambda_handler",
-            index="cleaner_lambda.py",
+            index="lambda_function.py",
             timeout=core.Duration.seconds(300),
             runtime=lambda_.Runtime.PYTHON_3_8,
             initial_policy=[
@@ -56,16 +55,16 @@ class BucketCleaner(core.Construct):
         )
 
         # check empty
-        check_lambda = lambda_python.PythonFunction(
+        is_complete_lambda = lambda_python.PythonFunction(
             self,
-            "check_lambda",
-            description=lambda_description,
-            entry=str(dirname),
+            "is_complete_lambda",
+            description=f"Confirm empty {core.Stack.stack_name} S3 buckets",
+            entry=str(dirname.joinpath("is_complete")),
             environment={
                 "BUCKETS": json.dumps([f"{bucket.bucket_name}" for bucket in buckets]),
             },
             handler="lambda_handler",
-            index="check_lambda.py",
+            index="lambda_function.py",
             timeout=core.Duration.seconds(300),
             runtime=lambda_.Runtime.PYTHON_3_8,
             initial_policy=[
@@ -78,16 +77,18 @@ class BucketCleaner(core.Construct):
         )
 
         # cleaner custom provider
-        cleaner_cr = cr.Provider(
+        cleaner_provider = cr.Provider(
             self,
-            "cleaner",
-            on_event_handler=cleaner_lambda,
-            is_complete_handler=check_lambda,
+            "cleaner_provider",
+            on_event_handler=on_event_lambda,
+            is_complete_handler=is_complete_lambda,
         )
 
         # custom resources
         bucket_cleaner_resource = core.CustomResource(
-            self, "bucket_cleaner_resource", service_token=cleaner_cr.service_token
+            self,
+            "bucket_cleaner_resource",
+            service_token=cleaner_provider.service_token,
         )
 
         # dependencies

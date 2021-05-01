@@ -1,21 +1,17 @@
 # import modules
-import boto3
-from botocore.exceptions import ClientError
 import urllib.request
 from aws_cdk import (
-    core,
     aws_msk as msk,
     aws_ec2 as ec2,
     aws_iam as iam,
     aws_s3_assets as assets,
+    core,
 )
+import boto3
 
-
-kafka = boto3.client("kafka")
 ec2_client = boto3.client("ec2")
 
-
-# get constants
+# get helpers
 from helpers.functions import (
     file_updated,
     kafka_get_brokers,
@@ -24,6 +20,7 @@ from helpers.functions import (
     user_data_init,
     instance_add_log_permissions,
 )
+from kafka.msk_attributes.custom_resource import MskAttributes
 
 # set path
 from pathlib import Path
@@ -127,6 +124,13 @@ class KafkaStack(core.Stack):
             enhanced_monitoring="DEFAULT",
         )
         core.Tags.of(kafka_cluster).add("project", constants["PROJECT_TAG"])
+
+        # custom resource for additional properties
+        msk_attributes = MskAttributes(
+            self,
+            "msk_attributes",
+            msk_cluster=kafka_cluster,
+        )
 
         init_awslogs = ec2.InitConfig(
             [

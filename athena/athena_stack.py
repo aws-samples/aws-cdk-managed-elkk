@@ -9,6 +9,7 @@ from pathlib import Path
 
 dirname = Path(__file__).parent
 
+
 class AthenaStack(core.Stack):
     def __init__(
         self, scope: core.Construct, id: str, constants: dict, **kwargs
@@ -44,12 +45,10 @@ class AthenaStack(core.Stack):
             self,
             "s3_bucket_cleaner",
             buckets=[s3_bucket],
-            lambda_description=f"On delete empty {core.Stack.stack_name} S3 buckets",
         )
 
         self.output_props = {}
         self.output_props["s3_bucket"] = s3_bucket
-
 
     # properties
     @property

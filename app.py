@@ -53,7 +53,7 @@ elastic_stack = ElasticStack(
     "elkk-elastic",
     vpc_stack,
     constants=constants,
-    client=True,
+    client=False,
     env=this_env,
 )
 elastic_stack.add_dependency(vpc_stack)
@@ -65,7 +65,6 @@ kibana_stack = KibanaStack(
     vpc_stack,
     elastic_stack,
     constants=constants,
-    update_lambda_zip=False,
     env=this_env,
 )
 kibana_stack.add_dependency(elastic_stack)
@@ -85,8 +84,8 @@ logstash_stack = LogstashStack(
     "elkk-logstash",
     vpc_stack,
     constants=constants,
-    logstash_ec2=False,
-    logstash_fargate=True,
+    logstash_ec2=True,
+    logstash_fargate=False,
     env=this_env,
 )
 logstash_stack.add_dependency(kafka_stack)
