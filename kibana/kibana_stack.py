@@ -28,8 +28,6 @@ class KibanaStack(core.Stack):
         self,
         scope: core.Construct,
         id_: str,
-        vpc_stack,
-        elastic_stack,
         constants: dict,
         **kwargs,
     ) -> None:
@@ -55,8 +53,8 @@ class KibanaStack(core.Stack):
             handler="lambda_handler",
             timeout=core.Duration.seconds(300),
             runtime=lambda_.Runtime.PYTHON_3_8,
-            vpc=vpc_stack.output_props["vpc"],
-            security_groups=[elastic_stack.outputs["elastic_security_group"]],
+            vpc=constants["vpc"],
+            security_groups=[constants["elastic_security_group"]],
             log_retention=logs.RetentionDays.ONE_WEEK,
         )
         # tag the lambda

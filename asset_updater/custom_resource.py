@@ -1,7 +1,9 @@
 from aws_cdk import (
+    aws_cloudformation as cfn,
     aws_iam as iam,
     aws_lambda as lambda_,
     aws_lambda_python as lambda_python,
+    aws_logs as logs,
     core,
     custom_resources as cr,
 )
@@ -13,25 +15,29 @@ from pathlib import Path
 dirname = Path(__file__).parent
 
 
-class MskAttributes(core.Construct):
+class AssetUpdater(core.Construct):
     def __init__(
         self,
         scope: core.Construct,
         id: str,
-        msk_cluster,
+        asset,
+        updates: dict,
         **kwargs,
     ) -> None:
         super().__init__(scope, id)
 
-        # get attributes
+        # env for lambda
+        env = updates
+        env["update_bucket"] = asset.s3_bucket_name
+        env["update_object"] = asset.s3_object_key
+
+        # update asset lambda
         on_event_lambda = lambda_python.PythonFunction(
             self,
             "on_event_lambda",
-            description=f"Get MSK attributes 1",
+            description=f"Update assets",
             entry=str(dirname.joinpath("on_event")),
-            environment={
-                "CLUSTER_NAME": msk_cluster.cluster_name,
-            },
+            environment=env,
             handler="lambda_handler",
             index="lambda_function.py",
             timeout=core.Duration.seconds(300),
@@ -39,30 +45,22 @@ class MskAttributes(core.Construct):
             initial_policy=[
                 iam.PolicyStatement(
                     effect=iam.Effect.ALLOW,
-                    actions=["kafka:ListClusters", "kafka:GetBootstrapBrokers"],
+                    actions=["s3:ListBucket"],
                     resources=["*"],
                 ),
             ],
         )
 
-        # cleaner custom provider
-        msk_attributes_provider = cr.Provider(
+        # asset updater provider
+        asset_updater_provider = cr.Provider(
             self,
-            "msk_attributes_provider",
+            "asset_updater_provider",
             on_event_handler=on_event_lambda,
         )
 
-        # custom resources
-        msk_attributes_resource = core.CustomResource(
+        # custom resource
+        asset_updater_resource = core.CustomResource(
             self,
-            "msk_attributes_resource",
-            service_token=msk_attributes_provider.service_token,
+            "asset_updater_resource",
+            service_token=asset_updater_provider.service_token,
         )
-
-        self.output_props = {}
-        self.output_props["msk_arn"] = msk_attributes_resource
-
-    # properties
-    @property
-    def outputs(self):
-        return self.output_props

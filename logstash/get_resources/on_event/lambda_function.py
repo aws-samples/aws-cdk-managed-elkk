@@ -2,13 +2,13 @@ import os
 import boto3
 import json
 
-kafkaclient = boto3.client("kafka")
-
 
 def lambda_handler(event, context):
 
     # show the event
     print("event", event)
+    # get buckets to empty
+    buckets = json.loads(os.environ["BUCKETS"])
 
     request_type = event["RequestType"]
     if request_type == "Create":
@@ -21,24 +21,8 @@ def lambda_handler(event, context):
 
 
 def on_create(event):
-
-    print("CREATE", event)
-
+    # get the kafka and aes security group ids
     response = {"PhysicalResourceId": "mskAttributes", "Data": {}}
-
-    # get the arn for the kakfa cluster
-    msk_arn = kafkaclient.list_clusters(ClusterNameFilter=os.environ["CLUSTER_NAME"])[
-        "ClusterInfoList"
-    ][0]["ClusterArn"]    
-    response["Data"]["msk_arn"] = msk_arn
-
-    # get the bootstrap brokers
-    msk_brokers = kafkaclient.get_bootstrap_brokers(ClusterArn=msk_arn)[
-        "BootstrapBrokerString"
-    ]
-    print(msk_brokers)
-
-    print(response)
     return response
 
 

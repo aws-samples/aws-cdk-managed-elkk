@@ -1,8 +1,11 @@
 # import modules
+import urllib.request
 from aws_cdk import (
     core,
     aws_ec2 as ec2,
 )
+
+external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 class VpcStack(core.Stack):
     def __init__(self, scope: core.Construct, id: str, constants: dict, **kwargs) -> None:
@@ -25,6 +28,7 @@ class VpcStack(core.Stack):
 
         self.output_props = {}
         self.output_props["vpc"] = vpc
+        self.output_props["external_ip"] = external_ip
 
     # properties
     @property

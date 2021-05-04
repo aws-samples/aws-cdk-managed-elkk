@@ -77,7 +77,7 @@ class BucketCleaner(core.Construct):
         )
 
         # cleaner custom provider
-        cleaner_provider = cr.Provider(
+        provider = cr.Provider(
             self,
             "cleaner_provider",
             on_event_handler=on_event_lambda,
@@ -85,12 +85,12 @@ class BucketCleaner(core.Construct):
         )
 
         # custom resources
-        bucket_cleaner_resource = core.CustomResource(
+        resource = core.CustomResource(
             self,
             "bucket_cleaner_resource",
-            service_token=cleaner_provider.service_token,
+            service_token=provider.service_token,
         )
 
         # dependencies
         for bucket in buckets:
-            bucket_cleaner_resource.node.add_dependency(bucket)
+            resource.node.add_dependency(bucket)

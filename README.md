@@ -127,86 +127,72 @@ The second stage in the ELKK deployment is to create the Amazon Managed Streamin
 Use the AWS CDK to deploy an Amazon MSK Cluster into the VPC.
 
 ```bash
-# deploy the kafka stack
-cdk deploy elkk-kafka
+# deploy the msk stack
+cdk deploy elkk-msk
 ```
 
 The CDK will prompt to apply Security Changes, input "y" for Yes.
 
-![ELKK Kafka - 1](/img/elkk_kafka_idx_1.png)
+![ELKK MSK - 1](/img/elkk_kafka_idx_1.png)
 
 When Client is set to True an Amazon EC2 instance is deployed to interact with the Amazon MSK Cluster. It can take up to 30 minutes for the Amazon MSK cluster and client EC2 instance to be deployed.
 
-If they keypair named in cdk.json is not found, the stack will skip the instance creation.
-
-![ELKK Kafka - 2](/img/elkk_kafka_idx_2.png)
+![ELKK MSK - 2](/img/elkk_kafka_idx_2.png)
 
 Wait until 2/2 checks are completed on the Kafka client EC2 instance to ensure that the userdata scripts have fully run.
 
-![ELKK Kafka - 3](/img/elkk_kafka_idx_3.png)
+![ELKK MSK - 3](/img/elkk_kafka_idx_3.png)
 
 On creation the Kafka client EC2 instance will create three Kafka topics: "elkktopic", "apachelog", and "appevent".
 
-Open a terminal window to connect to the Kafka client Amazon EC2 instance and create a Kafka producer session:
-
+Open a terminal window to connect to connect to the Kafka client Amazon EC2 instance
 ```bash
-# get the ec2 instance public dns
-kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
-# use the public dns to connect to the amazon ec2 instance
-# if the ssh does not connect, double-check the kafka client security group inbound ssh rule "from own public ip" and ensure the source IP is correct
-ssh ec2-user@$kafka_client_dns
+# Use stack output elkk-msk.kafkaclientinstancestring to connect to kafka client ec2
+# command is similar to the example below
+ssh ec2-user@ec2-1-23-45-67.compute-1.amazonaws.com
 ```
 
-![ElKK Kafka - 4](/img/elkk_kafka_idx_4.png)
+![ElKK MSK - 4](/img/elkk_kafka_idx_4.png)
 
-While connected to the Kafka client EC2 instance create the Kafka producer session on the elkktopic Kafka topic:
-
+While connected to the Kafka client EC2 instance create the elkktopic Kafka topic and connect as a producer to the elkktopic topic:
 ```bash
-# Get the cluster ARN
-kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
-# Get the bootstrap brokers
-kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
-# Connect to the cluster as a producer on the Kafka topic "elkktopic" 
-/opt/kafka_2.13-2.7.0/bin/kafka-console-producer.sh --broker-list $kafka_brokers --topic elkktopic
+# Use stack output elkk-msk.mskmaketopicelkktopic to create elkk-topic
+# command is similar to the example below
+make_topic=`/opt/kafka_2.13-2.7.0/bin/kafka-topics.sh --create --zookeeper z-1.elkk-stack.fmtxnc.c12.kafka.us-east-1.amazonaws.com:2181,z-3.elkk-stack.fmtxnc.c12.kafka.us-east-1.amazonaws.com:2181,z-2.elkk-stack.fmtxnc.c12.kafka.us-east-1.amazonaws.com:2181 --replication-factor 3 --partitions 1 --topic elkktopic 2>&1`
+# Use stack output elkk-msk.mskconnectproducer to connect to msk as a producer
+# command is similar to the example below
+/opt/kafka_2.13-2.7.0/bin/kafka-console-producer.sh --broker-list b-1.elkk-stack.fmtxnc.c12.kafka.us-east-1.amazonaws.com:9092,b-3.elkk-stack.fmtxnc.c12.kafka.us-east-1.amazonaws.com:9092,b-2.elkk-stack.fmtxnc.c12.kafka.us-east-1.amazonaws.com:9092 --topic elkktopic
+# create additional opics for "apachelog" and "appevent" using the elkk-msk.msktopicelkktopic command whilst updating the topic name 
 ```
 
-![ElKK Kafka - 5](/img/elkk_kafka_idx_5.png)
+![ElKK MSK - 5](/img/elkk_kafka_idx_5.png)
 
 Leave the Kafka producer session window open.  
 
 Open a new terminal window and connect to the Kafka client EC2 instance to create a Kafka consumer session:  
-
-![ElKK Kafka - 6](/img/elkk_kafka_idx_6.png)
-
 ```bash
-# get the ec2 instance public dns
-kafka_client_dns=`aws ec2 describe-instances --filter file://kafka/kafka_filter.json --output text --query "Reservations[*].Instances[*].{Instance:PublicDnsName}[0].Instance"` && echo $kafka_client_dns
-# use the public dns to connect to the ec2 instance
-ssh ec2-user@$kafka_client_dns
+# Use stack output elkk-msk.kafkaclientinstancestring to connect to kafka client ec2
+# command is similar to the example below
+ssh ec2-user@ec2-1-23-45-67.compute-1.amazonaws.com
+
+![ElKK MSK - 6](/img/elkk_kafka_idx_6.png)
+
+While connected to the Kafka client EC2 instance connect as a consumer to the elkktopic topic:
+```bash
+# Use stack output elkk-msk.mskconnectproducer to connect to msk as a producer
+# command is similar to the example below
+/opt/kafka_2.13-2.7.0/bin/kafka-console-consumer.sh --bootstrap-server b-1.elkk-stack.fmtxnc.c12.kafka.us-east-1.amazonaws.com:9092,b-3.elkk-stack.fmtxnc.c12.kafka.us-east-1.amazonaws.com:9092,b-2.elkk-stack.fmtxnc.c12.kafka.us-east-1.amazonaws.com:9092 --topic elkktopic --from-beginning
 ```
 
-Note the optional steps in red, if the yourkeypair is not recognized.
-
-![ElKK Kafka - 7](/img/elkk_kafka_idx_7.png)
-
-While connected to the Kafka client EC2 instance create the consumer session on the elkktopic Kafka topic.
-
-```bash
-# Get the cluster ARN
-kafka_arn=`aws kafka list-clusters --output text --query 'ClusterInfoList[*].ClusterArn'` && echo $kafka_arn
-# Get the bootstrap brokers
-kafka_brokers=`aws kafka get-bootstrap-brokers --cluster-arn $kafka_arn --output text --query '*'` && echo $kafka_brokers
-# Connect to the cluster as a consumer
-/opt/kafka_2.13-2.7.0/bin/kafka-console-consumer.sh --bootstrap-server $kafka_brokers --topic elkktopic --from-beginning
-```
+![ElKK MSK - 7](/img/elkk_kafka_idx_7.png)
 
 Type messages into the Kafka producer session and they are published to the Amazon MSK cluster
 
-![ElKK Kafka - 8](/img/elkk_kafka_idx_8.png)
+![ElKK MSK - 8](/img/elkk_kafka_idx_8.png)
 
 The messages published to the Amazon MS cluster by the producer session will appear in the Kafka consumer window as they are read from the cluster.
 
-![ElKK Kafka - 9](/img/elkk_kafka_idx_9.png)
+![ElKK MSK - 9](/img/elkk_kafka_idx_9.png)
 
 -----
 ## Filebeat <a name=filebeat></a>

@@ -1,6 +1,4 @@
 # import modules
-import urllib.request
-
 from aws_cdk import (
     core,
     aws_ec2 as ec2,
@@ -9,7 +7,6 @@ from aws_cdk import (
 )
 from helpers.functions import (
     file_updated,
-    kafka_get_brokers,
     user_data_init,
     instance_add_log_permissions,
 )
@@ -19,16 +16,12 @@ from pathlib import Path
 
 dirname = Path(__file__).parent
 
-external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
-
 
 class FilebeatStack(core.Stack):
     def __init__(
         self,
         scope: core.Construct,
         id: str,
-        vpc_stack,
-        kafka_stack,
         constants: dict,
         **kwargs,
     ) -> None:
@@ -47,8 +40,10 @@ class FilebeatStack(core.Stack):
             path=str(dirname.joinpath("log_generator_requirements.txt")),
         )
 
-        # get kakfa brokers
-        kafka_brokers = f'''"{kafka_get_brokers().replace(",", '", "')}"'''
+        # get kafka brokers
+        kafka_brokers = (
+            f'''"{constants['msk_brokers'].replace(",", '", "')}"'''
+        )
 
         # update filebeat.yml to .asset
         filebeat_yml_asset = file_updated(
@@ -69,10 +64,10 @@ class FilebeatStack(core.Stack):
             machine_image=ec2.AmazonLinuxImage(
                 generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
             ),
-            vpc=vpc_stack.output_props["vpc"],
+            vpc=constants["vpc"],
             vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
             key_name=constants["KEY_PAIR"],
-            security_group=kafka_stack.output_props["kafka_client_security_group"],
+            security_group=constants["kafka_client_security_group"],
             user_data=fb_userdata,
         )
         core.Tags.of(fb_instance).add("project", constants["PROJECT_TAG"])

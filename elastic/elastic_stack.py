@@ -12,9 +12,6 @@ from helpers.functions import (
     user_data_init,
     instance_add_log_permissions,
 )
-import urllib.request
-
-external_ip = urllib.request.urlopen("https://ident.me").read().decode("utf8")
 
 
 class ElasticStack(core.Stack):
@@ -22,7 +19,6 @@ class ElasticStack(core.Stack):
         self,
         scope: core.Construct,
         id: str,
-        vpc_stack,
         constants: dict,
         client: bool = True,
         **kwargs,
@@ -36,7 +32,7 @@ class ElasticStack(core.Stack):
         elastic_client_security_group = ec2.SecurityGroup(
             self,
             "elastic_client_security_group",
-            vpc=vpc_stack.output_props["vpc"],
+            vpc=constants["vpc"],
             description="elastic client security group",
             allow_all_outbound=True,
         )
@@ -46,13 +42,13 @@ class ElasticStack(core.Stack):
         core.Tags.of(elastic_client_security_group).add("Name", "elastic_client_sg")
         # Open port 22 for SSH
         elastic_client_security_group.add_ingress_rule(
-            ec2.Peer.ipv4(f"{external_ip}/32"),
+            ec2.Peer.ipv4(f"{constants['external_ip']}/32"),
             ec2.Port.tcp(22),
             "from own public ip",
         )
         # Open port for tunnel
         elastic_client_security_group.add_ingress_rule(
-            ec2.Peer.ipv4(f"{external_ip}/32"),
+            ec2.Peer.ipv4(f"{constants['external_ip']}/32"),
             ec2.Port.tcp(9200),
             "for ssh tunnel",
         )
@@ -61,7 +57,7 @@ class ElasticStack(core.Stack):
         elastic_security_group = ec2.SecurityGroup(
             self,
             "elastic_security_group",
-            vpc=vpc_stack.output_props["vpc"],
+            vpc=constants["vpc"],
             description="elastic security group",
             allow_all_outbound=True,
         )
@@ -122,7 +118,7 @@ class ElasticStack(core.Stack):
                 )
             ],
             ebs=aes.EbsOptions(enabled=True, volume_size=10),
-            vpc=vpc_stack.output_props["vpc"],
+            vpc=constants["vpc"],
             vpc_subnets=[
                 ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE, one_per_az=True)
             ],
@@ -146,7 +142,7 @@ class ElasticStack(core.Stack):
                 machine_image=ec2.AmazonLinuxImage(
                     generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
                 ),
-                vpc=vpc_stack.output_props["vpc"],
+                vpc=constants["vpc"],
                 vpc_subnets=ec2.SubnetSelection(
                     subnet_type=ec2.SubnetType.PRIVATE, one_per_az=True
                 ),
@@ -182,6 +178,7 @@ class ElasticStack(core.Stack):
 
         self.output_props = {}
         self.output_props["elastic_security_group"] = elastic_security_group
+        self.output_props["aes_endpoint"] = elastic_domain.domain_endpoint
 
     # properties
     @property

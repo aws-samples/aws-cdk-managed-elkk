@@ -53,33 +53,33 @@ def ensure_service_linked_role(service_name: str):
     return 0
 
 
-def kafka_get_arn() -> str:
-    """ get the arn for the kakfa cluster startingwith elkk- """
-    kafka_clusters = kafkaclient.list_clusters()
-    try:
-        return [
-            clstr["ClusterArn"]
-            for clstr in kafka_clusters["ClusterInfoList"]
-            if clstr["Tags"]["project"] == constants["PROJECT_TAG"]
-        ][0]
-    except IndexError:
-        return ""
+#def kafka_get_arn() -> str:
+#    """ get the arn for the kakfa cluster startingwith elkk- """
+#    kafka_clusters = kafkaclient.list_clusters()
+#    try:
+#        return [
+#            clstr["ClusterArn"]
+#            for clstr in kafka_clusters["ClusterInfoList"]
+#            if clstr["Tags"]["project"] == constants["PROJECT_TAG"]
+#        ][0]
+#    except IndexError:
+#        return ""
 
 
-def kafka_get_brokers() -> str:
-    """ get msk brokers from the kafka arn """
-    try:
-        kafka_brokers = kafkaclient.get_bootstrap_brokers(ClusterArn=kafka_get_arn())
-        return kafka_brokers["BootstrapBrokerString"]
-    except ClientError as err:
-        if (
-            err.response["Error"]["Message"]
-            == "Missing required request parameters: [clusterArn]"
-        ):
-            return ""
-        else:
-            print(f"Unexpectedd error: {err}")
-    return ""
+# def kafka_get_brokers() -> str:
+#    """ get msk brokers from the kafka arn """
+#    try:
+#        kafka_brokers = kafkaclient.get_bootstrap_brokers(ClusterArn=kafka_get_arn())
+#        return kafka_brokers["BootstrapBrokerString"]
+#    except ClientError as err:
+#        if (
+#            err.response["Error"]["Message"]
+#            == "Missing required request parameters: [clusterArn]"
+#        ):
+#            return ""
+#        else:
+#            print(f"Unexpectedd error: {err}")
+#    return ""
 
 
 def elastic_get_arn() -> str:
