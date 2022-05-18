@@ -47,25 +47,19 @@ Git -  https://git-scm.com/downloads
 python (3.6 or later) - https://www.python.org/downloads/  
 Docker - https://www.docker.com/  
 
-Update the constants values in cdk.json.
 Ensure that the kafka version is available via wget. 
 
 ### Create the Managed ELKK 
 
 Complete the following steps to set up the Managed ELKK workshop in your environment.
 
-At a bash terminal session.
+### Set up the environment
 
 ```bash
 # clone the repo
 git clone https://github.com/aws-samples/aws-cdk-managed-elkk
 # move to directory
 cd aws-cdk-managed-elkk
-```
-
-![Create Elkk - 1](/img/create_elkk_idx_1.png)
-
-```bash
 # bootstrap the remaining setup (assumes us-east-1)
 bash bootstrap.sh
 # create the virtual environment
@@ -77,18 +71,19 @@ source .env/bin/activate
 # create the key pair (if not using an existing key)
 # Ensure the the named keypair exists and is accessible.
 # The ssh comments using the keypair assume it has been added to the keychain.
-aws ec2 create-key-pair --key-name elk-key-pair --query 'KeyMaterial' --output text > elk-key-pair --region us-east-1
+aws ec2 create-key-pair --key-name elkk-keypair --query 'KeyMaterial' --output text > elkk-keypair.pem --region us-east-1 --profile elkk
 # update key_pair permissions
-chmod 400 yourkeypair.pem
+chmod 400 elkk-keypair.pem
 # move key_pair to .ssh
-mv -f yourkeypair.pem $HOME/.ssh/yourkeypair.pem
+mv -f elkk-keypair.pem $HOME/.ssh/elkk-keypair.pem
 # start the ssh agent
 eval `ssh-agent -s`
 # add your key to keychain
-ssh-add -k ~/.ssh/yourkeypair.pem 
+ssh-add -k ~/.ssh/elkk-keypair.pem 
+# set the env vars for the dev account
+export ELKK_ACCOUNT_DEV="1234567890"
+export ELKK_REGION_DEV="us-east-1"
 ```
-
-![Create Elkk - 2](/img/create_elkk_idx_2.png)
 
 ### Bootstrap the CDK
 
@@ -96,44 +91,37 @@ Create the CDK configuration by bootstrapping the CDK.
 
 ```bash
 # bootstrap the cdk
-cdk bootstrap aws://youraccount/yourregion
+cdk bootstrap aws://${ELKK_ACCOUNT_DEV}/${ELKK_REGION_DEV} --profile elkk
 ```
 
 ![Terminal - Bootstrap the CDK](/img/create_elkk_idx_6.png)
 
 ![Terminal - Bootstrap the CDK](/img/create_elkk_idx_7.png)
 
------
-## Amazon Virtual Private Cloud <a name="vpc"></a>
-
-The first stage in the ELKK deployment is to create an Amazon Virtual Private Cloud with public and private subnets. The Managed ELKK stack will be deployed into this VPC.
+## Amazon Virtual Private Cloud
 
 Use the AWS CDK to deploy an Amazon VPC across multiple availability zones.
 
 ```bash
 # deploy the vpc stack
-cdk deploy elkk-vpc
+cdk deploy olk-dev/vpcstack --profile elkk
 ```
 
 ![ELKK VPC - 1](/img/elkk_vpc_idx_1.png)
 
 ![ELKK VPC - 2](/img/elkk_vpc_idx_2.png)
 
------
-## Amazon Managed Streaming for Apache Kafka <a name="kafka"></a>
+## Amazon Managed Streaming for Apache Kafka
 
-The second stage in the ELKK deployment is to create the Amazon Managed Streaming for Apache Kafka cluster. An Amazon EC2 instance is created with the Apache Kafka client installed to interact with the Amazon MSK cluster.
-
-Use the AWS CDK to deploy an Amazon MSK Cluster into the VPC.
+The second stage in the ELKK deployment is to create the Amazon Managed Streaming for Apache Kafka cluster.
+An Amazon EC2 instance is created with the Apache Kafka client installed to interact with the Amazon MSK cluster.
 
 ```bash
-# deploy the msk stack
-cdk deploy elkk-msk
+# deploy the msk cluster
+cdk deploy olk-dev/kafka/mskcluster --profile elkk
+# deploy the kafka client on an ec2 instance
+cdk deploy olk-dev/kafka/kafkaclient --profile elkk
 ```
-
-The CDK will prompt to apply Security Changes, input "y" for Yes.
-
-![ELKK MSK - 1](/img/elkk_kafka_idx_1.png)
 
 When Client is set to True an Amazon EC2 instance is deployed to interact with the Amazon MSK Cluster. It can take up to 30 minutes for the Amazon MSK cluster and client EC2 instance to be deployed.
 

@@ -99,7 +99,7 @@ class ElasticStack(core.Stack):
         elastic_domain = aes.Domain(
             self,
             "elastic_domain",
-            version=aes.ElasticsearchVersion.V7_9,
+            version=aes.ElasticsearchVersion.V7_10,
             capacity=aes.CapacityConfig(
                 data_node_instance_type=constants["ELASTIC_INSTANCE"],
                 data_nodes=constants["ELASTIC_INSTANCE_COUNT"],

@@ -3,13 +3,11 @@ import boto3
 from botocore.exceptions import ClientError
 from pathlib import Path
 from aws_cdk import (
-    core,
     aws_ec2 as ec2,
     aws_iam as iam,
     aws_logs as logs,
 )
 
-app = core.App()
 # set boto3 client for amazon managged kafka
 kafkaclient = boto3.client("kafka")
 # set the boto3 client for amazon elasticsearch
@@ -19,7 +17,6 @@ iamclient = boto3.client("iam")
 # set the client for logs
 logs_client = boto3.client("logs")
 # get constants
-constants = app.node.try_get_context("constants")
 
 # helper to create updated assets
 def file_updated(file_name: str = "", updates: dict = {}):
@@ -51,35 +48,6 @@ def ensure_service_linked_role(service_name: str):
             print(f"Unexpectedd error: {err}")
             return 1
     return 0
-
-
-#def kafka_get_arn() -> str:
-#    """ get the arn for the kakfa cluster startingwith elkk- """
-#    kafka_clusters = kafkaclient.list_clusters()
-#    try:
-#        return [
-#            clstr["ClusterArn"]
-#            for clstr in kafka_clusters["ClusterInfoList"]
-#            if clstr["Tags"]["project"] == constants["PROJECT_TAG"]
-#        ][0]
-#    except IndexError:
-#        return ""
-
-
-# def kafka_get_brokers() -> str:
-#    """ get msk brokers from the kafka arn """
-#    try:
-#        kafka_brokers = kafkaclient.get_bootstrap_brokers(ClusterArn=kafka_get_arn())
-#        return kafka_brokers["BootstrapBrokerString"]
-#    except ClientError as err:
-#        if (
-#            err.response["Error"]["Message"]
-#            == "Missing required request parameters: [clusterArn]"
-#        ):
-#            return ""
-#        else:
-#            print(f"Unexpectedd error: {err}")
-#    return ""
 
 
 def elastic_get_arn() -> str:
